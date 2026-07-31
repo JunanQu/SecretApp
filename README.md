@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SecretApp 💌
 
-## Getting Started
+A cute little web app for asking someone out. Create a pretty invitation with a
+few proposed dates, send them one link, and find out exactly when they're free.
+No accounts, no sign-up friction — just butterflies.
 
-First, run the development server:
+## How it works
+
+1. **Create an invite** at `/new` — your names, a sweet message, 1–5 proposed
+   date/time options, and a theme (Blush Pink, Lavender Dream, or Golden Sunset).
+2. **Share the link** (`/i/<slug>`) — they open an animated envelope, tap
+   **Yes** (confetti included), and pick the times that work.
+3. **See their answer** on your private manage page (`/manage/<secret>`).
+
+Access control is via unguessable URL tokens — the public `slug` for the
+invitee and the private `secret` for the creator.
+
+## Tech stack
+
+- [Next.js](https://nextjs.org) (App Router) + TypeScript
+- [Tailwind CSS](https://tailwindcss.com) for styling
+- [Framer Motion](https://motion.dev) + canvas-confetti for the cute factor
+- [Prisma](https://prisma.io) + PostgreSQL (local Postgres for dev, [Neon](https://neon.tech) in production)
+
+## Local development
+
+Prerequisites: Node.js 20+ and PostgreSQL running locally.
 
 ```bash
+# 1. Install dependencies
+npm install
+
+# 2. Configure the database
+cp .env.example .env   # then edit DATABASE_URL if needed
+createdb secretapp
+
+# 3. Apply migrations and generate the Prisma client
+npx prisma migrate dev
+
+# 4. Run the dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deployment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Hosted on [Vercel](https://vercel.com) with a [Neon](https://neon.tech)
+Postgres database:
 
-## Learn More
+1. Import this GitHub repo into Vercel.
+2. In the Vercel project, go to **Storage → Create Database → Neon** — this
+   provisions Postgres and sets `DATABASE_URL` automatically.
+3. Deploy. Migrations can be applied with
+   `npx prisma migrate deploy` against the production `DATABASE_URL`.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Every push to `main` auto-deploys.
