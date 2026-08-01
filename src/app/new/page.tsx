@@ -5,9 +5,39 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { themes } from '@/lib/themes';
+import { formatDateOption } from '@/lib/format';
 import InviteCardPreview from '@/components/InviteCardPreview';
 
 type DraftOption = { label: string; iso: string };
+
+const TIME_PRESETS = [
+  { name: 'brunch', emoji: '🥐', time: '11:00' },
+  { name: 'afternoon', emoji: '☕', time: '15:00' },
+  { name: 'dinner', emoji: '🍽️', time: '19:00' },
+  { name: 'drinks', emoji: '🍸', time: '21:00' },
+];
+
+type DayChip = { date: string; weekday: string; day: string };
+
+function buildDayChips(count = 30): DayChip[] {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const chips: DayChip[] = [];
+  const now = new Date();
+  for (let i = 0; i < count; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    chips.push({
+      date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+      weekday:
+        i === 0
+          ? 'Today'
+          : i === 1
+            ? 'Tmrw'
+            : d.toLocaleDateString('en-US', { weekday: 'short' }),
+      day: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    });
+  }
+  return chips;
+}
 
 export default function NewInvitePage() {
   const router = useRouter();
@@ -64,10 +94,11 @@ export default function NewInvitePage() {
       setGateChecking(false);
     }
   }
-  const [options, setOptions] = useState<DraftOption[]>([
-    { label: '', iso: '' },
-    { label: '', iso: '' },
-  ]);
+  const [options, setOptions] = useState<DraftOption[]>([]);
+  const [dayChips] = useState(() => buildDayChips());
+  const [pickDate, setPickDate] = useState('');
+  const [pickTime, setPickTime] = useState('19:00');
+  const [pickLabel, setPickLabel] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [vibe, setVibe] = useState('sweet');
@@ -103,13 +134,18 @@ export default function NewInvitePage() {
     }
   }
 
-  const updateOption = (i: number, patch: Partial<DraftOption>) => {
-    setOptions((prev) =>
-      prev.map((o, idx) => (idx === i ? { ...o, ...patch } : o)),
-    );
-  };
-
   const validOptions = options.filter((o) => o.iso);
+
+  function addOption() {
+    if (!pickDate || !pickTime || options.length >= 5) return;
+    const iso = `${pickDate}T${pickTime}`;
+    setOptions((prev) =>
+      prev.some((o) => o.iso === iso)
+        ? prev
+        : [...prev, { label: pickLabel.trim(), iso }],
+    );
+    setPickLabel('');
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -225,7 +261,7 @@ export default function NewInvitePage() {
         </p>
 
         <div className="mt-8 grid gap-10 lg:grid-cols-2">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <form onSubmit={handleSubmit} className="flex min-w-0 flex-col gap-5">
             <div className="grid gap-5 sm:grid-cols-2">
               <label className="flex flex-col gap-1.5 text-sm font-medium">
                 Your name
@@ -336,52 +372,117 @@ export default function NewInvitePage() {
               />
             </label>
 
-            <fieldset className="flex flex-col gap-3">
+            <fieldset className="flex min-w-0 flex-col gap-3">
               <legend className="text-sm font-medium">
                 Proposed dates{' '}
                 <span className="font-normal text-rose-900/60">
-                  (1–5 options)
+                  (pick 1–5 — she chooses what works)
                 </span>
               </legend>
-              {options.map((o, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input
-                    type="datetime-local"
-                    className={`${inputClass} flex-1`}
-                    value={o.iso}
-                    onChange={(e) => updateOption(i, { iso: e.target.value })}
-                  />
-                  <input
-                    className={`${inputClass} flex-1`}
-                    value={o.label}
-                    onChange={(e) => updateOption(i, { label: e.target.value })}
-                    placeholder="e.g. dinner, picnic…"
-                    maxLength={120}
-                  />
-                  {options.length > 1 && (
+
+              {options.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  {options.map((o) => (
+                    <div
+                      key={o.iso}
+                      className="flex items-center gap-2 rounded-2xl border border-rose-200 bg-white/80 px-4 py-2.5 text-sm"
+                    >
+                      <span className="font-medium">
+                        💖 {formatDateOption(o.iso)}
+                      </span>
+                      {o.label && (
+                        <span className="text-rose-900/60">· {o.label}</span>
+                      )}
+                      <button
+                        type="button"
+                        aria-label="Remove option"
+                        onClick={() =>
+                          setOptions((prev) =>
+                            prev.filter((p) => p.iso !== o.iso),
+                          )
+                        }
+                        className="ml-auto rounded-full px-2 py-0.5 text-rose-400 transition hover:bg-rose-100 hover:text-rose-600"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {options.length < 5 && (
+                <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-rose-300 bg-white/50 p-4">
+                  <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+                    {dayChips.map((c) => (
+                      <button
+                        key={c.date}
+                        type="button"
+                        onClick={() => setPickDate(c.date)}
+                        className={`flex shrink-0 flex-col items-center rounded-2xl border px-3.5 py-2 text-xs transition ${
+                          pickDate === c.date
+                            ? 'border-rose-500 bg-rose-500 text-white'
+                            : 'border-rose-200 bg-white/80 text-rose-900 hover:border-rose-400'
+                        }`}
+                      >
+                        <span className="font-semibold">{c.weekday}</span>
+                        <span className="opacity-80">{c.day}</span>
+                      </button>
+                    ))}
+                    <label className="flex shrink-0 flex-col items-center justify-center rounded-2xl border border-rose-200 bg-white/80 px-3.5 py-2 text-xs text-rose-900 transition hover:border-rose-400">
+                      <span className="font-semibold">later?</span>
+                      <input
+                        type="date"
+                        value={pickDate}
+                        onChange={(e) => setPickDate(e.target.value)}
+                        className="w-[7.5rem] cursor-pointer bg-transparent text-center opacity-80 outline-none"
+                      />
+                    </label>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {TIME_PRESETS.map((p) => (
+                      <button
+                        key={p.name}
+                        type="button"
+                        onClick={() => setPickTime(p.time)}
+                        className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                          pickTime === p.time
+                            ? 'border-rose-500 bg-rose-500 text-white'
+                            : 'border-rose-200 bg-white/80 text-rose-900 hover:border-rose-400'
+                        }`}
+                      >
+                        {p.emoji} {p.name}
+                      </button>
+                    ))}
+                    <input
+                      type="time"
+                      value={pickTime}
+                      onChange={(e) => setPickTime(e.target.value)}
+                      className="rounded-full border border-rose-200 bg-white/80 px-3 py-1 text-xs text-rose-900 outline-none transition focus:border-rose-400"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      className={`${inputClass} flex-1 !py-2 text-sm`}
+                      value={pickLabel}
+                      onChange={(e) => setPickLabel(e.target.value)}
+                      placeholder="what's the plan? e.g. dinner, picnic… (optional)"
+                      maxLength={120}
+                    />
                     <button
                       type="button"
-                      aria-label="Remove option"
-                      onClick={() =>
-                        setOptions((prev) => prev.filter((_, idx) => idx !== i))
-                      }
-                      className="rounded-full px-2 py-1 text-rose-400 transition hover:bg-rose-100 hover:text-rose-600"
+                      onClick={addOption}
+                      disabled={!pickDate}
+                      className="shrink-0 rounded-full bg-rose-500 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      ✕
+                      + Add
                     </button>
+                  </div>
+                  {!pickDate && (
+                    <p className="text-[11px] text-rose-900/50">
+                      Tap a day and a time, then hit Add. You can add up to 5.
+                    </p>
                   )}
                 </div>
-              ))}
-              {options.length < 5 && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setOptions((prev) => [...prev, { label: '', iso: '' }])
-                  }
-                  className="self-start rounded-full border border-dashed border-rose-300 px-4 py-2 text-sm text-rose-500 transition hover:border-rose-500 hover:text-rose-700"
-                >
-                  + add another option
-                </button>
               )}
             </fieldset>
 
