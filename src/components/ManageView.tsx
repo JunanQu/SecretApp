@@ -8,6 +8,7 @@ import { getTheme } from '@/lib/themes';
 import { formatDateOption } from '@/lib/format';
 import type { InvitePublic } from '@/lib/types';
 import AddToCalendar from '@/components/AddToCalendar';
+import MapLinks from '@/components/MapLinks';
 
 type ResponseData = {
   id: string;
@@ -84,6 +85,12 @@ export default function ManageView({
           <h2 className={`font-display text-xl font-semibold ${t.heading}`}>
             {invite.toName}&apos;s answer
           </h2>
+          {invite.location && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm opacity-80">
+              <span className="font-medium">📍 {invite.location}</span>
+              <MapLinks location={invite.location} align="start" />
+            </div>
+          )}
 
           {!latest && (
             <div className="mt-4 flex items-center gap-3 text-sm opacity-70">
@@ -123,6 +130,7 @@ export default function ManageView({
                             startIso={o.iso}
                             message={invite.message}
                             label={o.label || undefined}
+                            location={invite.location || undefined}
                           />
                         </div>
                       ))}
@@ -145,6 +153,7 @@ export default function ManageView({
                           withName={invite.toName}
                           startIso={iso}
                           message={invite.message}
+                          location={invite.location || undefined}
                         />
                       </div>
                     ))}

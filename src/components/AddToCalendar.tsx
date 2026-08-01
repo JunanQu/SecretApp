@@ -12,6 +12,7 @@ type Props = {
   startIso: string;
   message?: string;
   label?: string;
+  location?: string;
   /** Align buttons under centered or left-aligned time chips */
   align?: 'center' | 'start';
   className?: string;
@@ -25,6 +26,7 @@ export default function AddToCalendar({
   startIso,
   message,
   label,
+  location,
   align = 'start',
   className = '',
 }: Props) {
@@ -33,6 +35,7 @@ export default function AddToCalendar({
     startIso,
     message,
     label,
+    location,
   });
   const googleUrl = toGoogleCalendarUrl(event);
 

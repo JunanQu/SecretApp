@@ -9,6 +9,7 @@ type AnswerEmailParams = {
   selectedOptions: DateOption[];
   proposedTimes: string[];
   note: string | null;
+  location: string | null;
   manageUrl: string;
 };
 
@@ -28,7 +29,7 @@ export async function sendAnswerEmail(params: AnswerEmailParams): Promise<void> 
     return;
   }
 
-  const { to, fromName, toName, accepted, selectedOptions, proposedTimes, note, manageUrl } =
+  const { to, fromName, toName, accepted, selectedOptions, proposedTimes, note, location, manageUrl } =
     params;
 
   const subject = accepted
@@ -52,12 +53,15 @@ export async function sendAnswerEmail(params: AnswerEmailParams): Promise<void> 
 
   const noteHtml = note ? `<p><strong>Their note:</strong> “${esc(note)}”</p>` : '';
 
+  const locationHtml = location ? `<p><strong>Where:</strong> 📍 ${esc(location)}</p>` : '';
+
   const html = `
     <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto;">
       <h2 style="color: #e11d48;">${
         accepted ? `${esc(toName)} said YES! 🎉` : `${esc(toName)} said “maybe another time” 🤍`
       }</h2>
       <p>Hey ${esc(fromName)}, your invite just got an answer.</p>
+      ${locationHtml}
       ${timesHtml}
       ${proposedHtml}
       ${noteHtml}

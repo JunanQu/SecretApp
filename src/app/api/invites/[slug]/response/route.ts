@@ -97,6 +97,7 @@ export async function POST(
       ),
       proposedTimes: normalizedProposedTimes,
       note: cleanNote,
+      location: invite.location,
       manageUrl: `${proto}://${host}/manage/${invite.secret}`,
     });
   }

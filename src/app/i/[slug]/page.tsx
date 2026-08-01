@@ -26,6 +26,7 @@ export default async function InvitePage({
         toName: invite.toName,
         message: invite.message,
         theme: invite.theme,
+        location: invite.location,
         dateOptions: invite.dateOptions as DateOption[],
       }}
     />

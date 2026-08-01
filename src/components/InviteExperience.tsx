@@ -8,6 +8,7 @@ import { formatDateOption } from '@/lib/format';
 import type { InvitePublic } from '@/lib/types';
 import FloatingHearts from '@/components/FloatingHearts';
 import AddToCalendar from '@/components/AddToCalendar';
+import MapLinks from '@/components/MapLinks';
 
 type Stage = 'envelope' | 'card' | 'availability' | 'declined' | 'done';
 
@@ -115,6 +116,14 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
               <p className="mt-4 whitespace-pre-wrap opacity-80">
                 {invite.message}
               </p>
+              {invite.location && (
+                <div className="mt-4">
+                  <p className="text-sm font-medium opacity-80">
+                    📍 {invite.location}
+                  </p>
+                  <MapLinks location={invite.location} className="mt-2" />
+                </div>
+              )}
               <p className="mt-4 text-sm opacity-70">— {invite.fromName} 💌</p>
               <div className="mt-8 flex flex-col items-center gap-3">
                 <motion.button
@@ -284,6 +293,7 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
                             startIso={o.iso}
                             message={invite.message}
                             label={o.label || undefined}
+                            location={invite.location || undefined}
                           />
                         </div>
                       ))}
@@ -301,6 +311,7 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
                               withName={invite.fromName}
                               startIso={iso}
                               message={invite.message}
+                              location={invite.location || undefined}
                             />
                           </div>
                         );

@@ -12,6 +12,7 @@ type CreateInviteBody = {
   message?: unknown;
   theme?: unknown;
   notifyEmail?: unknown;
+  location?: unknown;
   dateOptions?: unknown;
 };
 
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { accessCode, fromName, toName, message, theme, notifyEmail, dateOptions } = body;
+  const { accessCode, fromName, toName, message, theme, notifyEmail, location, dateOptions } = body;
 
   if (!isValidAccessCode(accessCode)) {
     return NextResponse.json(
@@ -56,6 +57,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
     }
     cleanNotifyEmail = notifyEmail.trim();
+  }
+  let cleanLocation: string | null = null;
+  if (location !== undefined && location !== null && location !== '') {
+    if (typeof location !== 'string' || location.length > 200) {
+      return NextResponse.json({ error: 'Invalid location' }, { status: 400 });
+    }
+    cleanLocation = location.trim() || null;
   }
   if (
     !Array.isArray(dateOptions) ||
@@ -95,6 +103,7 @@ export async function POST(req: Request) {
       message: message.trim(),
       theme,
       notifyEmail: cleanNotifyEmail,
+      location: cleanLocation,
       dateOptions: normalizedOptions,
     },
   });

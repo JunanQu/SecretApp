@@ -38,6 +38,7 @@ export default async function ManagePage({
         toName: invite.toName,
         message: invite.message,
         theme: invite.theme,
+        location: invite.location,
         dateOptions: invite.dateOptions as DateOption[],
       }}
       responses={invite.responses.map((r) => ({

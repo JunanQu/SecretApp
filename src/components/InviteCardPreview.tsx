@@ -8,6 +8,7 @@ type PreviewProps = {
   toName: string;
   message: string;
   theme: string;
+  location?: string;
   dateOptions: { label: string; iso: string }[];
 };
 
@@ -16,6 +17,7 @@ export default function InviteCardPreview({
   toName,
   message,
   theme,
+  location,
   dateOptions,
 }: PreviewProps) {
   const t = getTheme(theme);
@@ -32,6 +34,11 @@ export default function InviteCardPreview({
         <p className="mt-3 whitespace-pre-wrap text-sm opacity-80">
           {message.trim() || 'Your sweet message shows up here…'}
         </p>
+        {location?.trim() && (
+          <p className="mt-3 text-sm font-medium opacity-80">
+            📍 {location.trim()}
+          </p>
+        )}
         {dateOptions.filter((o) => o.iso).length > 0 && (
           <div className="mt-4 flex flex-col gap-2">
             {dateOptions

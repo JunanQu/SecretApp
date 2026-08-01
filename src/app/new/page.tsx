@@ -16,6 +16,7 @@ export default function NewInvitePage() {
   const [message, setMessage] = useState('');
   const [theme, setTheme] = useState('blush');
   const [notifyEmail, setNotifyEmail] = useState('');
+  const [location, setLocation] = useState('');
   const [accessCode, setAccessCode] = useState('');
   const [unlocked, setUnlocked] = useState(false);
   const [checkingSaved, setCheckingSaved] = useState(true);
@@ -125,6 +126,7 @@ export default function NewInvitePage() {
           message,
           theme,
           notifyEmail,
+          location,
           dateOptions: validOptions.map((o) => ({
             label: o.label,
             iso: new Date(o.iso).toISOString(),
@@ -321,6 +323,19 @@ export default function NewInvitePage() {
               </div>
             </fieldset>
 
+            <label className="flex flex-col gap-1.5 text-sm font-medium">
+              Where? 📍{' '}
+              <span className="font-normal text-rose-900/60">(optional — shows on the invite and in her calendar)</span>
+              <input
+                type="text"
+                className={inputClass}
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="e.g. Tartine Bakery, San Francisco"
+                maxLength={200}
+              />
+            </label>
+
             <fieldset className="flex flex-col gap-3">
               <legend className="text-sm font-medium">
                 Proposed dates{' '}
@@ -409,6 +424,7 @@ export default function NewInvitePage() {
               toName={toName}
               message={message}
               theme={theme}
+              location={location}
               dateOptions={options}
             />
           </div>

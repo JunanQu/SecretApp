@@ -100,12 +100,21 @@ export function buildDateEvent(opts: {
   startIso: string;
   message?: string;
   label?: string;
+  location?: string;
 }): CalendarEvent {
   return {
     title: `Date with ${opts.withName}`,
     startIso: opts.startIso,
     durationHours: 2,
     description: [opts.message, opts.label].filter(Boolean).join('\n\n') || undefined,
-    location: opts.label || undefined,
+    location: opts.location || opts.label || undefined,
   };
+}
+
+export function toGoogleMapsUrl(location: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
+}
+
+export function toAppleMapsUrl(location: string): string {
+  return `https://maps.apple.com/?q=${encodeURIComponent(location)}`;
 }

@@ -12,5 +12,7 @@ export type InvitePublic = {
   toName: string;
   message: string;
   theme: string;
+  /** e.g. "Tartine Bakery, San Francisco" */
+  location: string | null;
   dateOptions: DateOption[];
 };
