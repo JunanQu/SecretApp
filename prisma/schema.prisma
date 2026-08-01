@@ -17,6 +17,7 @@ model Invite {
   theme       String     @default("blush")
   notifyEmail String?
   location    String?
+  timezone    String?
   dateOptions Json
   createdAt   DateTime   @default(now())
   responses   Response[]

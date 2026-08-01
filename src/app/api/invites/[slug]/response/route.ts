@@ -98,6 +98,7 @@ export async function POST(
       proposedTimes: normalizedProposedTimes,
       note: cleanNote,
       location: invite.location,
+      timezone: invite.timezone,
       manageUrl: `${proto}://${host}/manage/${invite.secret}`,
     });
   }

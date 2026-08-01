@@ -163,6 +163,7 @@ export default function NewInvitePage() {
           theme,
           notifyEmail,
           location,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           dateOptions: validOptions.map((o) => ({
             label: o.label,
             iso: new Date(o.iso).toISOString(),

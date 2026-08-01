@@ -13,8 +13,19 @@ type CreateInviteBody = {
   theme?: unknown;
   notifyEmail?: unknown;
   location?: unknown;
+  timezone?: unknown;
   dateOptions?: unknown;
 };
+
+function normalizeTimezone(tz: unknown): string | null {
+  if (typeof tz !== 'string' || !tz || tz.length > 64) return null;
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: tz });
+    return tz;
+  } catch {
+    return null;
+  }
+}
 
 function isNonEmptyString(v: unknown, max = 500): v is string {
   return typeof v === 'string' && v.trim().length > 0 && v.length <= max;
@@ -26,7 +37,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { accessCode, fromName, toName, message, theme, notifyEmail, location, dateOptions } = body;
+  const { accessCode, fromName, toName, message, theme, notifyEmail, location, timezone, dateOptions } = body;
 
   if (!isValidAccessCode(accessCode)) {
     return NextResponse.json(
@@ -104,6 +115,7 @@ export async function POST(req: Request) {
       theme,
       notifyEmail: cleanNotifyEmail,
       location: cleanLocation,
+      timezone: normalizeTimezone(timezone),
       dateOptions: normalizedOptions,
     },
   });

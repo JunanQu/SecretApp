@@ -10,6 +10,8 @@ type AnswerEmailParams = {
   proposedTimes: string[];
   note: string | null;
   location: string | null;
+  /** IANA timezone of the invite creator, used to render times in the email */
+  timezone: string | null;
   manageUrl: string;
 };
 
@@ -29,7 +31,7 @@ export async function sendAnswerEmail(params: AnswerEmailParams): Promise<void> 
     return;
   }
 
-  const { to, fromName, toName, accepted, selectedOptions, proposedTimes, note, location, manageUrl } =
+  const { to, fromName, toName, accepted, selectedOptions, proposedTimes, note, location, timezone, manageUrl } =
     params;
 
   const subject = accepted
@@ -40,14 +42,14 @@ export async function sendAnswerEmail(params: AnswerEmailParams): Promise<void> 
     ? `<p><strong>Times that work for them:</strong></p><ul>${selectedOptions
         .map(
           (o) =>
-            `<li>${esc(formatDateOption(o.iso))}${o.label ? ` — ${esc(o.label)}` : ''}</li>`,
+            `<li>${esc(formatDateOption(o.iso, timezone))}${o.label ? ` — ${esc(o.label)}` : ''}</li>`,
         )
         .join('')}</ul>`
     : '';
 
   const proposedHtml = proposedTimes.length
     ? `<p><strong>They suggested:</strong></p><ul>${proposedTimes
-        .map((iso) => `<li>${esc(formatDateOption(iso))}</li>`)
+        .map((iso) => `<li>${esc(formatDateOption(iso, timezone))}</li>`)
         .join('')}</ul>`
     : '';
 
