@@ -370,22 +370,18 @@ export default function NewInvitePage() {
               )}
             </fieldset>
 
-            {/* Email notifications are wired up server-side but hidden until an
-                email provider account is available. Restore this field to re-enable. */}
-            {false && (
-              <label className="flex flex-col gap-1.5 text-sm font-medium">
-                Email me when they answer{' '}
-                <span className="font-normal text-rose-900/60">(optional)</span>
-                <input
-                  type="email"
-                  className={inputClass}
-                  value={notifyEmail}
-                  onChange={(e) => setNotifyEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  maxLength={254}
-                />
-              </label>
-            )}
+            <label className="flex flex-col gap-1.5 text-sm font-medium">
+              Email me when they answer{' '}
+              <span className="font-normal text-rose-900/60">(optional)</span>
+              <input
+                type="email"
+                className={inputClass}
+                value={notifyEmail}
+                onChange={(e) => setNotifyEmail(e.target.value)}
+                placeholder="you@example.com"
+                maxLength={254}
+              />
+            </label>
 
             {error && (
               <p className="rounded-2xl bg-rose-100 px-4 py-3 text-sm text-rose-700">
