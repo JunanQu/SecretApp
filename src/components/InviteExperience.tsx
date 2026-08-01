@@ -7,6 +7,7 @@ import { getTheme } from '@/lib/themes';
 import { formatDateOption } from '@/lib/format';
 import type { InvitePublic } from '@/lib/types';
 import FloatingHearts from '@/components/FloatingHearts';
+import AddToCalendar from '@/components/AddToCalendar';
 
 type Stage = 'envelope' | 'card' | 'availability' | 'declined' | 'done';
 
@@ -261,6 +262,52 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
               <p className="mt-3 opacity-80">
                 Your answer is on its way to {invite.fromName}. Get excited! ✨
               </p>
+              {(selected.length > 0 || proposed.filter(Boolean).length > 0) && (
+                <div className="mt-6 text-left">
+                  <p className="text-center text-sm font-medium opacity-60">
+                    Save a time to your calendar
+                  </p>
+                  <div className="mt-3 flex flex-col gap-3">
+                    {invite.dateOptions
+                      .filter((o) => selected.includes(o.id))
+                      .map((o) => (
+                        <div
+                          key={o.id}
+                          className={`rounded-2xl border px-4 py-3 text-sm font-medium ${t.chipSelected}`}
+                        >
+                          💖 {formatDateOption(o.iso)}
+                          {o.label && (
+                            <span className="opacity-80"> · {o.label}</span>
+                          )}
+                          <AddToCalendar
+                            withName={invite.fromName}
+                            startIso={o.iso}
+                            message={invite.message}
+                            label={o.label || undefined}
+                          />
+                        </div>
+                      ))}
+                    {proposed
+                      .filter(Boolean)
+                      .map((time) => {
+                        const iso = new Date(time).toISOString();
+                        return (
+                          <div
+                            key={iso}
+                            className={`rounded-2xl border px-4 py-3 text-sm font-medium ${t.chip}`}
+                          >
+                            💡 {formatDateOption(iso)}
+                            <AddToCalendar
+                              withName={invite.fromName}
+                              startIso={iso}
+                              message={invite.message}
+                            />
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
 
