@@ -21,6 +21,30 @@ export default function NewInvitePage() {
   ]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [vibe, setVibe] = useState('sweet');
+  const [suggesting, setSuggesting] = useState(false);
+
+  async function suggestMessage() {
+    setSuggesting(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/suggest-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromName, toName, vibe, idea: message }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? 'Suggestion failed — try again?');
+        return;
+      }
+      setMessage(data.message);
+    } catch {
+      setError('Network error — please try again');
+    } finally {
+      setSuggesting(false);
+    }
+  }
 
   const updateOption = (i: number, patch: Partial<DraftOption>) => {
     setOptions((prev) =>
@@ -119,6 +143,38 @@ export default function NewInvitePage() {
                 required
               />
             </label>
+
+            <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-rose-300 bg-white/50 px-4 py-3">
+              <span className="text-xs font-medium text-rose-900/60">
+                Stuck? Pick a vibe:
+              </span>
+              {(['sweet', 'funny', 'bold'] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setVibe(v)}
+                  className={`rounded-full border px-3 py-1 text-xs capitalize transition ${
+                    vibe === v
+                      ? 'border-rose-500 bg-rose-500 text-white'
+                      : 'border-rose-200 bg-white/70 text-rose-900 hover:border-rose-400'
+                  }`}
+                >
+                  {v}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={suggestMessage}
+                disabled={suggesting}
+                className="ml-auto rounded-full border border-rose-300 bg-white px-4 py-1.5 text-xs font-semibold text-rose-600 transition hover:border-rose-500 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {suggesting ? 'Writing… ✍️' : '✨ Write it for me'}
+              </button>
+              <p className="w-full text-[11px] leading-snug text-rose-900/50">
+                Tip: jot a rough idea in the message box first (e.g. “ramen
+                friday”) and the AI will polish it in your chosen vibe.
+              </p>
+            </div>
 
             <fieldset className="flex flex-col gap-2">
               <legend className="text-sm font-medium">Theme</legend>
