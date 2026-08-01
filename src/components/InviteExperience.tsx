@@ -12,6 +12,34 @@ import MapLinks from '@/components/MapLinks';
 
 type Stage = 'envelope' | 'card' | 'availability' | 'declined' | 'done';
 
+let cachedShapes: confetti.Shape[] | null = null;
+function emojiShapes(): confetti.Shape[] {
+  if (cachedShapes) return cachedShapes;
+  try {
+    cachedShapes = [
+      confetti.shapeFromText({ text: '💖', scalar: 2 }),
+      confetti.shapeFromText({ text: '💌', scalar: 2 }),
+    ];
+  } catch {
+    cachedShapes = [];
+  }
+  return cachedShapes;
+}
+
+function heartPop() {
+  const shapes = emojiShapes();
+  confetti({
+    particleCount: shapes.length ? 20 : 35,
+    spread: 80,
+    startVelocity: 26,
+    scalar: shapes.length ? 1.7 : 1,
+    shapes: shapes.length ? shapes : undefined,
+    colors: ['#f43f5e', '#fb7185', '#fda4af'],
+    origin: { x: 0.5, y: 0.45 },
+    disableForReducedMotion: true,
+  });
+}
+
 function fireConfetti() {
   const burst = (opts: confetti.Options) =>
     confetti({
@@ -24,16 +52,49 @@ function fireConfetti() {
   burst({ origin: { x: 0.2, y: 0.7 }, angle: 60 });
   burst({ origin: { x: 0.8, y: 0.7 }, angle: 120 });
   setTimeout(() => burst({ origin: { x: 0.5, y: 0.6 }, spread: 100 }), 250);
+  const shapes = emojiShapes();
+  if (shapes.length) {
+    setTimeout(
+      () =>
+        confetti({
+          particleCount: 24,
+          spread: 110,
+          scalar: 1.8,
+          startVelocity: 30,
+          shapes,
+          origin: { x: 0.5, y: 0.55 },
+          disableForReducedMotion: true,
+        }),
+      400,
+    );
+  }
 }
+
+const revealContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.16, delayChildren: 0.25 } },
+};
+const revealItem = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: 'easeOut' as const } },
+};
 
 export default function InviteExperience({ invite }: { invite: InvitePublic }) {
   const t = getTheme(invite.theme);
   const [stage, setStage] = useState<Stage>('envelope');
+  const [opening, setOpening] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [proposed, setProposed] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function openEnvelope() {
+    if (opening) return;
+    setOpening(true);
+    setTimeout(heartPop, 500);
+    setTimeout(() => setStage('card'), 1100);
+  }
 
   async function submit(accepted: boolean) {
     setSubmitting(true);
@@ -72,79 +133,182 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
       className={`relative flex flex-1 items-center justify-center overflow-hidden px-4 py-12 ${t.bg}`}
     >
       <FloatingHearts className={t.particle} />
+      <motion.div
+        aria-hidden
+        animate={{ x: [0, 40, 0], y: [0, -30, 0] }}
+        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+        className="pointer-events-none absolute -left-20 top-1/4 h-72 w-72 rounded-full bg-white/40 blur-3xl"
+      />
+      <motion.div
+        aria-hidden
+        animate={{ x: [0, -50, 0], y: [0, 40, 0] }}
+        transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
+        className="pointer-events-none absolute -right-20 bottom-1/4 h-80 w-80 rounded-full bg-white/40 blur-3xl"
+      />
       <div className="relative w-full max-w-md">
         <AnimatePresence mode="wait">
           {stage === 'envelope' && (
-            <motion.button
+            <motion.div
               key="envelope"
-              onClick={() => setStage('card')}
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.1, rotate: -4 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 18 }}
-              className={`${card} w-full cursor-pointer`}
+              initial={{ opacity: 0, scale: 0.9, y: 24 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 1.08 }}
+              transition={{ type: 'spring', stiffness: 170, damping: 18 }}
+              className="flex flex-col items-center"
             >
-              <motion.div
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-                className="text-7xl"
+              <motion.h1
+                animate={{ opacity: opening ? 0 : 1 }}
+                className={`mb-8 text-center font-display text-3xl font-semibold ${t.heading}`}
               >
-                💌
-              </motion.div>
-              <h1 className={`mt-5 font-display text-3xl font-semibold ${t.heading}`}>
                 {invite.toName}, you&apos;ve got mail
-              </h1>
-              <p className="mt-3 text-sm opacity-70">
-                Someone has a question for you… tap to open
-              </p>
-            </motion.button>
+              </motion.h1>
+              <motion.button
+                onClick={openEnvelope}
+                aria-label="Open your invitation"
+                whileHover={opening ? undefined : { scale: 1.03, rotate: -1 }}
+                whileTap={opening ? undefined : { scale: 0.97 }}
+                animate={opening ? { y: 0 } : { y: [0, -8, 0] }}
+                transition={
+                  opening
+                    ? { duration: 0.2 }
+                    : { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }
+                }
+                className="relative block w-[19rem] max-w-full cursor-pointer sm:w-[22rem]"
+              >
+                <div className="relative aspect-[8/5] w-full [perspective:1000px]">
+                  {/* envelope interior */}
+                  <div className={`absolute inset-0 rounded-2xl border shadow-2xl ${t.card}`} />
+                  {/* the letter inside */}
+                  <motion.div
+                    animate={opening ? { y: '-64%' } : { y: 0 }}
+                    transition={{ delay: 0.4, duration: 0.65, ease: 'easeOut' }}
+                    className="absolute inset-x-5 bottom-3 top-3 z-10 flex flex-col items-center justify-center rounded-xl bg-white shadow-md"
+                  >
+                    <span className="text-4xl">{t.emoji}</span>
+                    <span className={`mt-1 text-xs font-medium tracking-wide opacity-60 ${t.text}`}>
+                      for {invite.toName}
+                    </span>
+                  </motion.div>
+                  {/* front pocket */}
+                  <div
+                    className={`absolute inset-x-0 bottom-0 z-20 h-[58%] rounded-b-2xl ${t.envelope} [clip-path:polygon(0_0,50%_38%,100%_0,100%_100%,0_100%)]`}
+                  />
+                  {/* flap */}
+                  <motion.div
+                    animate={opening ? { rotateX: -180 } : { rotateX: 0 }}
+                    transition={{ duration: 0.5, ease: 'easeInOut' }}
+                    style={{ transformOrigin: 'top' }}
+                    className={`absolute inset-x-0 top-0 h-[55%] rounded-t-2xl ${t.envelopeFlap} [clip-path:polygon(0_0,100%_0,50%_100%)] ${
+                      opening ? 'z-0' : 'z-30'
+                    }`}
+                  />
+                  {/* wax seal */}
+                  <motion.div
+                    animate={
+                      opening
+                        ? { opacity: 0, scale: 0.4 }
+                        : { scale: [1, 1.12, 1] }
+                    }
+                    transition={
+                      opening
+                        ? { duration: 0.3 }
+                        : { duration: 1.6, repeat: Infinity, ease: 'easeInOut' }
+                    }
+                    className={`absolute left-1/2 top-[44%] z-40 flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full border text-xl shadow-lg ${t.chipSelected}`}
+                  >
+                    💌
+                  </motion.div>
+                </div>
+              </motion.button>
+              <motion.p
+                animate={
+                  opening ? { opacity: 0 } : { opacity: [0.5, 0.9, 0.5] }
+                }
+                transition={
+                  opening
+                    ? { duration: 0.2 }
+                    : { duration: 2, repeat: Infinity }
+                }
+                className={`mt-7 text-sm ${t.text}`}
+              >
+                someone has a question for you… tap to open
+              </motion.p>
+            </motion.div>
           )}
 
           {stage === 'card' && (
             <motion.div
               key="card"
-              initial={{ opacity: 0, rotateY: 90 }}
-              animate={{ opacity: 1, rotateY: 0 }}
+              initial={{ opacity: 0, y: 60, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -30 }}
-              transition={{ type: 'spring', stiffness: 140, damping: 16 }}
+              transition={{ type: 'spring', stiffness: 150, damping: 17 }}
               className={card}
             >
-              <div className="text-5xl">{t.emoji}</div>
-              <h1 className={`mt-4 font-display text-3xl font-semibold ${t.heading}`}>
-                {invite.toName}, will you go out with me?
-              </h1>
-              <p className="mt-4 whitespace-pre-wrap opacity-80">
-                {invite.message}
-              </p>
-              {invite.location && (
-                <div className="mt-4">
-                  <p className="text-sm font-medium opacity-80">
-                    📍 {invite.location}
-                  </p>
-                  <MapLinks location={invite.location} className="mt-2" />
-                </div>
-              )}
-              <p className="mt-4 text-sm opacity-70">— {invite.fromName} 💌</p>
-              <div className="mt-8 flex flex-col items-center gap-3">
-                <motion.button
-                  whileHover={{ scale: 1.06 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    fireConfetti();
-                    setStage('availability');
-                  }}
-                  className={`rounded-full px-12 py-4 text-xl font-semibold transition-colors ${t.button}`}
+              <motion.div
+                variants={revealContainer}
+                initial="hidden"
+                animate="show"
+              >
+                <motion.div
+                  variants={revealItem}
+                  className="text-5xl"
                 >
-                  Yes! 🥰
-                </motion.button>
-                <button
-                  onClick={() => submit(false)}
-                  disabled={submitting}
-                  className="text-xs opacity-50 transition hover:opacity-80"
+                  <motion.span
+                    className="inline-block"
+                    animate={{ rotate: [0, -8, 8, 0] }}
+                    transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+                  >
+                    {t.emoji}
+                  </motion.span>
+                </motion.div>
+                <motion.h1
+                  variants={revealItem}
+                  className={`mt-4 font-display text-3xl font-semibold ${t.heading}`}
                 >
-                  maybe another time…
-                </button>
-              </div>
+                  {invite.toName}, will you go out with me?
+                </motion.h1>
+                <motion.p
+                  variants={revealItem}
+                  className="mt-4 whitespace-pre-wrap opacity-80"
+                >
+                  {invite.message}
+                </motion.p>
+                {invite.location && (
+                  <motion.div variants={revealItem} className="mt-4">
+                    <p className="text-sm font-medium opacity-80">
+                      📍 {invite.location}
+                    </p>
+                    <MapLinks location={invite.location} className="mt-2" />
+                  </motion.div>
+                )}
+                <motion.p variants={revealItem} className="mt-4 text-sm opacity-70">
+                  — {invite.fromName} 💌
+                </motion.p>
+                <motion.div
+                  variants={revealItem}
+                  className="mt-8 flex flex-col items-center gap-3"
+                >
+                  <motion.button
+                    whileHover={{ scale: 1.06 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      fireConfetti();
+                      setStage('availability');
+                    }}
+                    className={`rounded-full px-12 py-4 text-xl font-semibold transition-colors ${t.button}`}
+                  >
+                    Yes! 🥰
+                  </motion.button>
+                  <button
+                    onClick={() => submit(false)}
+                    disabled={submitting}
+                    className="text-xs opacity-50 transition hover:opacity-80"
+                  >
+                    maybe another time…
+                  </button>
+                </motion.div>
+              </motion.div>
             </motion.div>
           )}
 

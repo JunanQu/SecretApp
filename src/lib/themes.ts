@@ -17,6 +17,9 @@ export type Theme = {
   chipSelected: string;
   /** particle color for floating hearts */
   particle: string;
+  /** envelope pocket / flap paper tones */
+  envelope: string;
+  envelopeFlap: string;
 };
 
 export const themes: Record<string, Theme> = {
@@ -33,6 +36,8 @@ export const themes: Record<string, Theme> = {
     chip: 'bg-rose-50 border-rose-200 text-rose-900 hover:border-rose-400',
     chipSelected: 'bg-rose-500 border-rose-500 text-white',
     particle: 'text-rose-300',
+    envelope: 'bg-rose-200',
+    envelopeFlap: 'bg-rose-300',
   },
   lavender: {
     id: 'lavender',
@@ -47,6 +52,8 @@ export const themes: Record<string, Theme> = {
     chip: 'bg-violet-50 border-violet-200 text-violet-900 hover:border-violet-400',
     chipSelected: 'bg-violet-500 border-violet-500 text-white',
     particle: 'text-violet-300',
+    envelope: 'bg-violet-200',
+    envelopeFlap: 'bg-violet-300',
   },
   sunset: {
     id: 'sunset',
@@ -61,6 +68,8 @@ export const themes: Record<string, Theme> = {
     chip: 'bg-amber-50 border-amber-200 text-amber-900 hover:border-amber-400',
     chipSelected: 'bg-orange-500 border-orange-500 text-white',
     particle: 'text-orange-300',
+    envelope: 'bg-amber-200',
+    envelopeFlap: 'bg-amber-300',
   },
 };
 
