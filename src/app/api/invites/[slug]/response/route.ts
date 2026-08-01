@@ -5,6 +5,7 @@ import type { DateOption } from '@/lib/types';
 type ResponseBody = {
   accepted?: unknown;
   selectedOptionIds?: unknown;
+  proposedTimes?: unknown;
   note?: unknown;
 };
 
@@ -24,7 +25,7 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { accepted, selectedOptionIds, note } = body;
+  const { accepted, selectedOptionIds, proposedTimes, note } = body;
 
   if (typeof accepted !== 'boolean') {
     return NextResponse.json({ error: 'accepted must be a boolean' }, { status: 400 });
@@ -49,11 +50,32 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid note' }, { status: 400 });
   }
 
+  const normalizedProposedTimes: string[] = [];
+  if (proposedTimes !== undefined && proposedTimes !== null) {
+    if (
+      !Array.isArray(proposedTimes) ||
+      proposedTimes.length > 3 ||
+      !proposedTimes.every(
+        (t: unknown): t is string =>
+          typeof t === 'string' && !isNaN(new Date(t).getTime()),
+      )
+    ) {
+      return NextResponse.json(
+        { error: 'proposedTimes must be up to 3 valid datetime strings' },
+        { status: 400 },
+      );
+    }
+    normalizedProposedTimes.push(
+      ...proposedTimes.map((t) => new Date(t).toISOString()),
+    );
+  }
+
   const response = await prisma.response.create({
     data: {
       inviteId: invite.id,
       accepted,
       selectedOptionIds,
+      proposedTimes: normalizedProposedTimes,
       note: typeof note === 'string' && note.trim() ? note.trim() : null,
     },
   });

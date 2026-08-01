@@ -44,6 +44,7 @@ export default async function ManagePage({
         id: r.id,
         accepted: r.accepted,
         selectedOptionIds: r.selectedOptionIds as string[],
+        proposedTimes: (r.proposedTimes as string[]) ?? [],
         note: r.note,
         createdAt: r.createdAt.toISOString(),
       }))}

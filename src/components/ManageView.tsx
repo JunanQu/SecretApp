@@ -12,6 +12,7 @@ type ResponseData = {
   id: string;
   accepted: boolean;
   selectedOptionIds: string[];
+  proposedTimes: string[];
   note: string | null;
   createdAt: string;
 };
@@ -98,22 +99,45 @@ export default function ManageView({
           {latest && latest.accepted && (
             <div className="mt-4">
               <p className="text-lg font-semibold">They said YES! 🎉</p>
-              <p className="mt-3 text-sm font-medium opacity-60">
-                Times that work for them:
-              </p>
-              <div className="mt-2 flex flex-col gap-2">
-                {invite.dateOptions
-                  .filter((o) => latest.selectedOptionIds.includes(o.id))
-                  .map((o) => (
-                    <div
-                      key={o.id}
-                      className={`rounded-full border px-4 py-2.5 text-sm font-medium ${t.chipSelected}`}
-                    >
-                      💖 {formatDateOption(o.iso)}
-                      {o.label && <span className="opacity-80"> · {o.label}</span>}
-                    </div>
-                  ))}
-              </div>
+              {latest.selectedOptionIds.length > 0 && (
+                <>
+                  <p className="mt-3 text-sm font-medium opacity-60">
+                    Times that work for them:
+                  </p>
+                  <div className="mt-2 flex flex-col gap-2">
+                    {invite.dateOptions
+                      .filter((o) => latest.selectedOptionIds.includes(o.id))
+                      .map((o) => (
+                        <div
+                          key={o.id}
+                          className={`rounded-full border px-4 py-2.5 text-sm font-medium ${t.chipSelected}`}
+                        >
+                          💖 {formatDateOption(o.iso)}
+                          {o.label && (
+                            <span className="opacity-80"> · {o.label}</span>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </>
+              )}
+              {latest.proposedTimes.length > 0 && (
+                <>
+                  <p className="mt-3 text-sm font-medium opacity-60">
+                    They suggested {latest.selectedOptionIds.length > 0 ? 'some other times too' : 'these times instead'}:
+                  </p>
+                  <div className="mt-2 flex flex-col gap-2">
+                    {latest.proposedTimes.map((iso) => (
+                      <div
+                        key={iso}
+                        className={`rounded-full border px-4 py-2.5 text-sm font-medium ${t.chip}`}
+                      >
+                        💡 {formatDateOption(iso)}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
               {latest.note && (
                 <blockquote className="mt-4 rounded-2xl bg-white/70 px-4 py-3 text-sm italic">
                   “{latest.note}”

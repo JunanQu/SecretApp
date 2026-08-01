@@ -28,6 +28,7 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
   const t = getTheme(invite.theme);
   const [stage, setStage] = useState<Stage>('envelope');
   const [selected, setSelected] = useState<string[]>([]);
+  const [proposed, setProposed] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +43,9 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
         body: JSON.stringify({
           accepted,
           selectedOptionIds: accepted ? selected : [],
+          proposedTimes: accepted
+            ? proposed.filter(Boolean).map((t) => new Date(t).toISOString())
+            : [],
           note,
         }),
       });
@@ -148,7 +152,7 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
                 Yay! When are you free?
               </h2>
               <p className="mt-2 text-sm opacity-70">
-                Tap every time that works for you.
+                Tap every time that works — or suggest your own below.
               </p>
               <div className="mt-5 flex flex-col gap-2.5">
                 {invite.dateOptions.map((o) => {
@@ -175,6 +179,44 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
                   );
                 })}
               </div>
+              <div className="mt-5 rounded-2xl border border-dashed border-current/25 bg-white/50 p-4 text-left">
+                <p className="text-sm font-medium">
+                  None of these work? Suggest your own time 💡
+                </p>
+                <div className="mt-2 flex flex-col gap-2">
+                  {proposed.map((time, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <input
+                        type="datetime-local"
+                        value={time}
+                        onChange={(e) =>
+                          setProposed((prev) =>
+                            prev.map((p, idx) => (idx === i ? e.target.value : p)),
+                          )
+                        }
+                        className="flex-1 rounded-2xl border border-current/20 bg-white/80 px-4 py-2.5 text-sm outline-none"
+                      />
+                      <button
+                        aria-label="Remove suggested time"
+                        onClick={() =>
+                          setProposed((prev) => prev.filter((_, idx) => idx !== i))
+                        }
+                        className="rounded-full px-2 py-1 opacity-50 transition hover:opacity-90"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  {proposed.length < 3 && (
+                    <button
+                      onClick={() => setProposed((prev) => [...prev, ''])}
+                      className="self-start rounded-full border border-dashed border-current/30 px-4 py-1.5 text-xs font-medium opacity-70 transition hover:opacity-100"
+                    >
+                      + suggest a time
+                    </button>
+                  )}
+                </div>
+              </div>
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
@@ -186,7 +228,10 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
               <motion.button
                 whileHover={{ scale: submitting ? 1 : 1.04 }}
                 whileTap={{ scale: submitting ? 1 : 0.96 }}
-                disabled={submitting || selected.length === 0}
+                disabled={
+                  submitting ||
+                  (selected.length === 0 && proposed.filter(Boolean).length === 0)
+                }
                 onClick={() => submit(true)}
                 className={`mt-5 w-full rounded-full px-8 py-4 text-lg font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${t.button}`}
               >
