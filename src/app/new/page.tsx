@@ -17,17 +17,52 @@ export default function NewInvitePage() {
   const [theme, setTheme] = useState('blush');
   const [notifyEmail, setNotifyEmail] = useState('');
   const [accessCode, setAccessCode] = useState('');
+  const [unlocked, setUnlocked] = useState(false);
+  const [checkingSaved, setCheckingSaved] = useState(true);
+  const [gateCode, setGateCode] = useState('');
+  const [gateError, setGateError] = useState<string | null>(null);
+  const [gateChecking, setGateChecking] = useState(false);
+
+  async function verifyCode(code: string): Promise<boolean> {
+    const res = await fetch('/api/access', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessCode: code }),
+    });
+    return res.ok;
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem('secretapp-access-code');
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time localStorage hydration
-    if (saved) setAccessCode(saved);
+    (saved ? verifyCode(saved) : Promise.resolve(false))
+      .then((ok) => {
+        if (ok && saved) {
+          setAccessCode(saved);
+          setUnlocked(true);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setCheckingSaved(false));
   }, []);
 
-  const updateAccessCode = (value: string) => {
-    setAccessCode(value);
-    localStorage.setItem('secretapp-access-code', value);
-  };
+  async function handleGateSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setGateError(null);
+    setGateChecking(true);
+    try {
+      if (await verifyCode(gateCode)) {
+        localStorage.setItem('secretapp-access-code', gateCode.trim());
+        setAccessCode(gateCode.trim());
+        setUnlocked(true);
+      } else {
+        setGateError('Hmm, that code isn’t right — double-check with the app owner.');
+      }
+    } catch {
+      setGateError('Network error — please try again.');
+    } finally {
+      setGateChecking(false);
+    }
+  }
   const [options, setOptions] = useState<DraftOption[]>([
     { label: '', iso: '' },
     { label: '', iso: '' },
@@ -121,6 +156,65 @@ export default function NewInvitePage() {
         >
           ← back
         </Link>
+        {!unlocked && (
+          <div className="mx-auto mt-16 max-w-md">
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-3xl border border-rose-200 bg-white/80 p-8 text-center backdrop-blur-md"
+            >
+              {checkingSaved ? (
+                <motion.div
+                  animate={{ opacity: [1, 0.4, 1] }}
+                  transition={{ duration: 1.4, repeat: Infinity }}
+                  className="text-4xl"
+                >
+                  🔑
+                </motion.div>
+              ) : (
+                <>
+                  <div className="text-4xl">🔑</div>
+                  <h1 className="mt-3 font-display text-2xl font-semibold">
+                    First, the secret code
+                  </h1>
+                  <p className="mt-2 text-sm text-rose-900/70">
+                    Creating invites is invite-only. Enter your access code to
+                    continue.
+                  </p>
+                  <form onSubmit={handleGateSubmit} className="mt-5 flex flex-col gap-3">
+                    <input
+                      type="password"
+                      className={inputClass}
+                      value={gateCode}
+                      onChange={(e) => setGateCode(e.target.value)}
+                      placeholder="access code"
+                      autoComplete="off"
+                      autoFocus
+                      required
+                    />
+                    {gateError && (
+                      <p className="rounded-2xl bg-rose-100 px-4 py-3 text-sm text-rose-700">
+                        {gateError}
+                      </p>
+                    )}
+                    <motion.button
+                      type="submit"
+                      disabled={gateChecking || !gateCode.trim()}
+                      whileHover={{ scale: gateChecking ? 1 : 1.02 }}
+                      whileTap={{ scale: gateChecking ? 1 : 0.98 }}
+                      className="rounded-full bg-rose-500 px-8 py-3.5 font-semibold text-white shadow-lg shadow-rose-300/60 transition-colors hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {gateChecking ? 'Checking…' : 'Unlock 💘'}
+                    </motion.button>
+                  </form>
+                </>
+              )}
+            </motion.div>
+          </div>
+        )}
+
+        {unlocked && (
+        <>
         <h1 className="mt-4 font-display text-4xl font-semibold">
           Craft your invite 💌
         </h1>
@@ -130,19 +224,6 @@ export default function NewInvitePage() {
 
         <div className="mt-8 grid gap-10 lg:grid-cols-2">
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-            <label className="flex flex-col gap-1.5 text-sm font-medium">
-              Access code 🔑
-              <input
-                type="password"
-                className={inputClass}
-                value={accessCode}
-                onChange={(e) => updateAccessCode(e.target.value)}
-                placeholder="the secret code"
-                autoComplete="off"
-                required
-              />
-            </label>
-
             <div className="grid gap-5 sm:grid-cols-2">
               <label className="flex flex-col gap-1.5 text-sm font-medium">
                 Your name
@@ -336,6 +417,8 @@ export default function NewInvitePage() {
             />
           </div>
         </div>
+        </>
+        )}
       </div>
     </main>
   );
