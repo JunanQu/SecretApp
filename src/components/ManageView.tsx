@@ -55,8 +55,9 @@ export default function ManageView({
             </h1>
             <p className="mt-2 text-sm opacity-70">
               Send {invite.toName} this link — and bookmark{' '}
-              <span className="font-semibold">this page</span> to see their
-              answer. It&apos;s your private link, don&apos;t share it.
+              <span className="font-semibold">this page</span>
+              {' '}to see their answer. It&apos;s your private link,
+              don&apos;t share it.
             </p>
           </motion.div>
         )}
