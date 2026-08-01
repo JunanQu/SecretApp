@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import FloatingHearts from '@/components/FloatingHearts';
+import DemoWalkthrough from '@/components/DemoWalkthrough';
 
 const steps = [
   {
@@ -51,6 +52,18 @@ export default function Home() {
               Create an invite 💌
             </Link>
           </motion.div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.25 }}
+          className="w-full"
+        >
+          <p className="mb-5 text-sm font-medium uppercase tracking-widest text-rose-400">
+            what she&apos;ll see
+          </p>
+          <DemoWalkthrough />
         </motion.div>
 
         <div className="grid w-full gap-4 sm:grid-cols-3">
