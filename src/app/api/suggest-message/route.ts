@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { generateText } from 'ai';
 import { google } from '@ai-sdk/google';
+import { isValidAccessCode } from '@/lib/access';
 
 const VIBES: Record<string, string> = {
   sweet: 'warm, sincere, and a little shy — heartfelt but not over the top',
@@ -9,6 +10,7 @@ const VIBES: Record<string, string> = {
 };
 
 type SuggestBody = {
+  accessCode?: unknown;
   fromName?: unknown;
   toName?: unknown;
   vibe?: unknown;
@@ -19,6 +21,13 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as SuggestBody | null;
   if (!body) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  if (!isValidAccessCode(body.accessCode)) {
+    return NextResponse.json(
+      { error: 'Invalid access code — ask the app owner for one 💌' },
+      { status: 401 },
+    );
   }
 
   const fromName = typeof body.fromName === 'string' ? body.fromName.slice(0, 80) : '';

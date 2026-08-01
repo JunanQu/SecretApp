@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -16,6 +16,18 @@ export default function NewInvitePage() {
   const [message, setMessage] = useState('');
   const [theme, setTheme] = useState('blush');
   const [notifyEmail, setNotifyEmail] = useState('');
+  const [accessCode, setAccessCode] = useState('');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('secretapp-access-code');
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time localStorage hydration
+    if (saved) setAccessCode(saved);
+  }, []);
+
+  const updateAccessCode = (value: string) => {
+    setAccessCode(value);
+    localStorage.setItem('secretapp-access-code', value);
+  };
   const [options, setOptions] = useState<DraftOption[]>([
     { label: '', iso: '' },
     { label: '', iso: '' },
@@ -40,7 +52,7 @@ export default function NewInvitePage() {
       const res = await fetch('/api/suggest-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fromName, toName, vibe, idea }),
+        body: JSON.stringify({ accessCode, fromName, toName, vibe, idea }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -72,6 +84,7 @@ export default function NewInvitePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          accessCode,
           fromName,
           toName,
           message,
@@ -117,6 +130,19 @@ export default function NewInvitePage() {
 
         <div className="mt-8 grid gap-10 lg:grid-cols-2">
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <label className="flex flex-col gap-1.5 text-sm font-medium">
+              Access code 🔑
+              <input
+                type="password"
+                className={inputClass}
+                value={accessCode}
+                onChange={(e) => updateAccessCode(e.target.value)}
+                placeholder="the secret code"
+                autoComplete="off"
+                required
+              />
+            </label>
+
             <div className="grid gap-5 sm:grid-cols-2">
               <label className="flex flex-col gap-1.5 text-sm font-medium">
                 Your name

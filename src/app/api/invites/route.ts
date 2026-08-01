@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { nanoid } from 'nanoid';
 import { prisma } from '@/lib/db';
 import { themeIds } from '@/lib/themes';
+import { isValidAccessCode } from '@/lib/access';
 import type { DateOption } from '@/lib/types';
 
 type CreateInviteBody = {
+  accessCode?: unknown;
   fromName?: unknown;
   toName?: unknown;
   message?: unknown;
@@ -23,7 +25,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { fromName, toName, message, theme, notifyEmail, dateOptions } = body;
+  const { accessCode, fromName, toName, message, theme, notifyEmail, dateOptions } = body;
+
+  if (!isValidAccessCode(accessCode)) {
+    return NextResponse.json(
+      { error: 'Invalid access code — ask the app owner for one 💌' },
+      { status: 401 },
+    );
+  }
 
   if (!isNonEmptyString(fromName, 80)) {
     return NextResponse.json({ error: 'Your name is required' }, { status: 400 });
