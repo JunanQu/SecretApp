@@ -84,7 +84,11 @@ function SceneYes() {
 }
 
 function SceneTimes() {
-  const chips = ['Fri, Aug 21 · 8 PM 🍝', 'Sat, Aug 22 · 11 AM 🥐', 'Sun, Aug 23 · 3 PM ☕'];
+  const chips = [
+    '🎬 Fri, 7:30 – 10 PM',
+    '🥐 Sat, 11 AM – 12:30 PM',
+    '🏛️ Sun, 2 – 4 PM',
+  ];
   return (
     <div className="flex h-full flex-col items-center justify-center gap-2 px-5">
       <p className="mb-1 font-display text-xs font-semibold text-rose-600">

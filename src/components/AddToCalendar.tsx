@@ -10,9 +10,12 @@ import {
 type Props = {
   withName: string;
   startIso: string;
+  endIso?: string | null;
   message?: string;
   label?: string;
   location?: string;
+  /** activity id from lib/activities */
+  activity?: string | null;
   /** Align buttons under centered or left-aligned time chips */
   align?: 'center' | 'start';
   className?: string;
@@ -24,18 +27,22 @@ const linkClass =
 export default function AddToCalendar({
   withName,
   startIso,
+  endIso,
   message,
   label,
   location,
+  activity,
   align = 'start',
   className = '',
 }: Props) {
   const event: CalendarEvent = buildDateEvent({
     withName,
     startIso,
+    endIso,
     message,
     label,
     location,
+    activity,
   });
   const googleUrl = toGoogleCalendarUrl(event);
 

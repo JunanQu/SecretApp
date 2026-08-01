@@ -1,6 +1,10 @@
+import { getActivity } from '@/lib/activities';
+
 export type CalendarEvent = {
   title: string;
   startIso: string;
+  /** Explicit end — wins over `durationHours` when it is after the start */
+  endIso?: string | null;
   /** Defaults to 2 hours after start */
   durationHours?: number;
   description?: string;
@@ -27,9 +31,12 @@ export function toUtcStamp(date: Date): string {
 
 function eventBounds(event: CalendarEvent): { start: Date; end: Date } {
   const start = new Date(event.startIso);
+  if (event.endIso) {
+    const end = new Date(event.endIso);
+    if (!isNaN(end.getTime()) && end > start) return { start, end };
+  }
   const hours = event.durationHours ?? 2;
-  const end = new Date(start.getTime() + hours * 60 * 60 * 1000);
-  return { start, end };
+  return { start, end: new Date(start.getTime() + hours * 60 * 60 * 1000) };
 }
 
 function escapeIcsText(value: string): string {
@@ -98,14 +105,22 @@ export function downloadIcs(event: CalendarEvent, filename = 'date.ics'): void {
 export function buildDateEvent(opts: {
   withName: string;
   startIso: string;
+  endIso?: string | null;
   message?: string;
   label?: string;
   location?: string;
+  /** activity id from lib/activities — flavors the event title */
+  activity?: string | null;
 }): CalendarEvent {
+  const activity = getActivity(opts.activity);
+  const title = activity
+    ? `${activity.emoji} ${activity.name[0].toUpperCase()}${activity.name.slice(1)} with ${opts.withName}`
+    : `Date with ${opts.withName}`;
   return {
-    title: `Date with ${opts.withName}`,
+    title,
     startIso: opts.startIso,
-    durationHours: 2,
+    endIso: opts.endIso ?? null,
+    durationHours: activity?.durationHours ?? 2,
     description: [opts.message, opts.label].filter(Boolean).join('\n\n') || undefined,
     location: opts.location || opts.label || undefined,
   };

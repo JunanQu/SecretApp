@@ -4,6 +4,10 @@ export type DateOption = {
   label: string;
   /** ISO 8601 datetime string */
   iso: string;
+  /** ISO 8601 datetime string for when it wraps up — optional */
+  endIso?: string | null;
+  /** id from `lib/activities` (concert, movie, museum…) — optional */
+  activity?: string | null;
 };
 
 export type InvitePublic = {
