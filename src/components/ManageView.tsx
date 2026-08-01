@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { getTheme } from '@/lib/themes';
 import { formatDateOption } from '@/lib/format';
 import type { InvitePublic } from '@/lib/types';
+import AddToCalendar from '@/components/AddToCalendar';
 
 type ResponseData = {
   id: string;
@@ -110,12 +111,18 @@ export default function ManageView({
                       .map((o) => (
                         <div
                           key={o.id}
-                          className={`rounded-full border px-4 py-2.5 text-sm font-medium ${t.chipSelected}`}
+                          className={`rounded-2xl border px-4 py-3 text-sm font-medium ${t.chipSelected}`}
                         >
                           💖 {formatDateOption(o.iso)}
                           {o.label && (
                             <span className="opacity-80"> · {o.label}</span>
                           )}
+                          <AddToCalendar
+                            withName={invite.toName}
+                            startIso={o.iso}
+                            message={invite.message}
+                            label={o.label || undefined}
+                          />
                         </div>
                       ))}
                   </div>
@@ -130,9 +137,14 @@ export default function ManageView({
                     {latest.proposedTimes.map((iso) => (
                       <div
                         key={iso}
-                        className={`rounded-full border px-4 py-2.5 text-sm font-medium ${t.chip}`}
+                        className={`rounded-2xl border px-4 py-3 text-sm font-medium ${t.chip}`}
                       >
                         💡 {formatDateOption(iso)}
+                        <AddToCalendar
+                          withName={invite.toName}
+                          startIso={iso}
+                          message={invite.message}
+                        />
                       </div>
                     ))}
                   </div>
