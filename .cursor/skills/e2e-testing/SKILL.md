@@ -15,8 +15,8 @@ Full-flow verification of the app: access gate → create invite → invitee res
 
 - `.env` at the repo root with `DATABASE_URL` (local Postgres), `ACCESS_CODES`, `GOOGLE_GENERATIVE_AI_API_KEY`, and `BREVO_API_KEY` + `BREVO_SENDER_EMAIL`. See `.env.example`.
 - Local Postgres running, schema up to date: `npx prisma migrate dev`
-- Pick a valid access code from `ACCESS_CODES` in `.env` (referred to as `$CODE` below). Never commit or log real codes.
-- Contributors: `.env` is git-ignored, so invent your own `ACCESS_CODES` value locally (e.g. `test-code-123`) — the app validates against its own environment, so any code you set there works for local testing. Production codes are separate (set in Vercel) and only the app owner has them; without one, skip the code-gated production tests.
+- **Access code for local testing** (`$CODE` below): read `ACCESS_CODES` from `.env` and use any code from it — no need to ask the user. `.env` is git-ignored, so contributors set their own value (e.g. `test-code-123`); the app validates against its own environment, so any locally-set code works locally.
+- **Access code for production testing**: production validates against codes set in Vercel, which only the app owner knows. Ask the user for a production access code before running the code-gated production tests; if they don't provide one, run only the ungated checks (deploy status, public pages, logs). Never commit, echo, or log real codes.
 
 ## Local pass
 
