@@ -15,6 +15,7 @@ export default function NewInvitePage() {
   const [toName, setToName] = useState('');
   const [message, setMessage] = useState('');
   const [theme, setTheme] = useState('blush');
+  const [notifyEmail, setNotifyEmail] = useState('');
   const [options, setOptions] = useState<DraftOption[]>([
     { label: '', iso: '' },
     { label: '', iso: '' },
@@ -75,6 +76,7 @@ export default function NewInvitePage() {
           toName,
           message,
           theme,
+          notifyEmail,
           dateOptions: validOptions.map((o) => ({
             label: o.label,
             iso: new Date(o.iso).toISOString(),
@@ -260,6 +262,19 @@ export default function NewInvitePage() {
                 </button>
               )}
             </fieldset>
+
+            <label className="flex flex-col gap-1.5 text-sm font-medium">
+              Email me when they answer{' '}
+              <span className="font-normal text-rose-900/60">(optional)</span>
+              <input
+                type="email"
+                className={inputClass}
+                value={notifyEmail}
+                onChange={(e) => setNotifyEmail(e.target.value)}
+                placeholder="you@example.com"
+                maxLength={254}
+              />
+            </label>
 
             {error && (
               <p className="rounded-2xl bg-rose-100 px-4 py-3 text-sm text-rose-700">

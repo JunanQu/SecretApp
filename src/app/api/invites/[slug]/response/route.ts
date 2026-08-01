@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { sendAnswerEmail } from '@/lib/email';
 import type { DateOption } from '@/lib/types';
 
 type ResponseBody = {
@@ -70,15 +71,35 @@ export async function POST(
     );
   }
 
+  const cleanNote = typeof note === 'string' && note.trim() ? note.trim() : null;
+
   const response = await prisma.response.create({
     data: {
       inviteId: invite.id,
       accepted,
       selectedOptionIds,
       proposedTimes: normalizedProposedTimes,
-      note: typeof note === 'string' && note.trim() ? note.trim() : null,
+      note: cleanNote,
     },
   });
+
+  if (invite.notifyEmail) {
+    const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'localhost:3000';
+    const proto = req.headers.get('x-forwarded-proto') ?? 'http';
+    const inviteOptions = invite.dateOptions as DateOption[];
+    await sendAnswerEmail({
+      to: invite.notifyEmail,
+      fromName: invite.fromName,
+      toName: invite.toName,
+      accepted,
+      selectedOptions: inviteOptions.filter((o) =>
+        (selectedOptionIds as string[]).includes(o.id),
+      ),
+      proposedTimes: normalizedProposedTimes,
+      note: cleanNote,
+      manageUrl: `${proto}://${host}/manage/${invite.secret}`,
+    });
+  }
 
   return NextResponse.json({ ok: true, id: response.id }, { status: 201 });
 }

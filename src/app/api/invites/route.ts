@@ -9,6 +9,7 @@ type CreateInviteBody = {
   toName?: unknown;
   message?: unknown;
   theme?: unknown;
+  notifyEmail?: unknown;
   dateOptions?: unknown;
 };
 
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { fromName, toName, message, theme, dateOptions } = body;
+  const { fromName, toName, message, theme, notifyEmail, dateOptions } = body;
 
   if (!isNonEmptyString(fromName, 80)) {
     return NextResponse.json({ error: 'Your name is required' }, { status: 400 });
@@ -35,6 +36,17 @@ export async function POST(req: Request) {
   }
   if (typeof theme !== 'string' || !themeIds.includes(theme)) {
     return NextResponse.json({ error: 'Invalid theme' }, { status: 400 });
+  }
+  let cleanNotifyEmail: string | null = null;
+  if (notifyEmail !== undefined && notifyEmail !== null && notifyEmail !== '') {
+    if (
+      typeof notifyEmail !== 'string' ||
+      notifyEmail.length > 254 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notifyEmail.trim())
+    ) {
+      return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
+    }
+    cleanNotifyEmail = notifyEmail.trim();
   }
   if (
     !Array.isArray(dateOptions) ||
@@ -73,6 +85,7 @@ export async function POST(req: Request) {
       toName: toName.trim(),
       message: message.trim(),
       theme,
+      notifyEmail: cleanNotifyEmail,
       dateOptions: normalizedOptions,
     },
   });
