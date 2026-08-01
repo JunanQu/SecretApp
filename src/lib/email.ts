@@ -19,11 +19,12 @@ function esc(s: string): string {
     .replaceAll('>', '&gt;');
 }
 
-/** Sends the "they answered!" notification via Resend. Never throws. */
+/** Sends the "they answered!" notification via Brevo. Never throws. */
 export async function sendAnswerEmail(params: AnswerEmailParams): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.warn('RESEND_API_KEY not set — skipping notification email');
+  const apiKey = process.env.BREVO_API_KEY;
+  const senderEmail = process.env.BREVO_SENDER_EMAIL;
+  if (!apiKey || !senderEmail) {
+    console.warn('BREVO_API_KEY / BREVO_SENDER_EMAIL not set — skipping notification email');
     return;
   }
 
@@ -68,23 +69,23 @@ export async function sendAnswerEmail(params: AnswerEmailParams): Promise<void> 
     </div>`;
 
   try {
-    const res = await fetch('https://api.resend.com/emails', {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        'api-key': apiKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'SecretApp <onboarding@resend.dev>',
-        to: [to],
+        sender: { name: 'SecretApp', email: senderEmail },
+        to: [{ email: to }],
         subject,
-        html,
+        htmlContent: html,
       }),
     });
     if (!res.ok) {
-      console.error('Resend send failed', res.status, await res.text());
+      console.error('Brevo send failed', res.status, await res.text());
     }
   } catch (err) {
-    console.error('Resend send errored', err);
+    console.error('Brevo send errored', err);
   }
 }
