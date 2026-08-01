@@ -22,16 +22,24 @@ export default function NewInvitePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [vibe, setVibe] = useState('sweet');
+  const [aiIdea, setAiIdea] = useState('');
   const [suggesting, setSuggesting] = useState(false);
 
   async function suggestMessage() {
     setSuggesting(true);
     setError(null);
+    const optionHints = options
+      .map((o) => o.label.trim())
+      .filter(Boolean)
+      .join(', ');
+    const idea = [aiIdea.trim() || message.trim(), optionHints && `planned activities: ${optionHints}`]
+      .filter(Boolean)
+      .join('; ');
     try {
       const res = await fetch('/api/suggest-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fromName, toName, vibe, idea: message }),
+        body: JSON.stringify({ fromName, toName, vibe, idea }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -145,8 +153,15 @@ export default function NewInvitePage() {
             </label>
 
             <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-rose-300 bg-white/50 px-4 py-3">
+              <input
+                className={`${inputClass} w-full`}
+                value={aiIdea}
+                onChange={(e) => setAiIdea(e.target.value)}
+                placeholder="What's the date about? e.g. ramen then arcade, we met rock climbing…"
+                maxLength={300}
+              />
               <span className="text-xs font-medium text-rose-900/60">
-                Stuck? Pick a vibe:
+                Pick a vibe:
               </span>
               {(['sweet', 'funny', 'bold'] as const).map((v) => (
                 <button
@@ -171,8 +186,8 @@ export default function NewInvitePage() {
                 {suggesting ? 'Writing… ✍️' : '✨ Write it for me'}
               </button>
               <p className="w-full text-[11px] leading-snug text-rose-900/50">
-                Tip: jot a rough idea in the message box first (e.g. “ramen
-                friday”) and the AI will polish it in your chosen vibe.
+                Describe the plan above, pick a vibe, and the AI drafts your
+                message — edit it however you like before sending.
               </p>
             </div>
 
