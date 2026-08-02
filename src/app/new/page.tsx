@@ -4,18 +4,26 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { nanoid } from 'nanoid';
 import { themes } from '@/lib/themes';
-import { formatDateOption } from '@/lib/format';
+import { activities, getActivity, type Activity } from '@/lib/activities';
+import { formatDateRange } from '@/lib/format';
+import { addHoursToTime, endIsoFrom } from '@/lib/datetime';
+import { isValidEmail } from '@/lib/validation';
 import InviteCardPreview from '@/components/InviteCardPreview';
 
-type DraftOption = { label: string; iso: string };
+type DraftOption = {
+  /** client-side key — two options may share a start time */
+  id: string;
+  label: string;
+  /** local datetime string, e.g. "2026-08-05T19:00" */
+  iso: string;
+  /** absolute ISO string once an end time is picked */
+  endIso: string | null;
+  activity: string | null;
+};
 
-const TIME_PRESETS = [
-  { name: 'brunch', emoji: '🥐', time: '11:00' },
-  { name: 'afternoon', emoji: '☕', time: '15:00' },
-  { name: 'dinner', emoji: '🍽️', time: '19:00' },
-  { name: 'drinks', emoji: '🍸', time: '21:00' },
-];
+const DURATION_CHIPS = [1, 2, 3];
 
 type DayChip = { date: string; weekday: string; day: string };
 
@@ -46,6 +54,8 @@ export default function NewInvitePage() {
   const [message, setMessage] = useState('');
   const [theme, setTheme] = useState('blush');
   const [notifyEmail, setNotifyEmail] = useState('');
+  const [toEmail, setToEmail] = useState('');
+  const [sendInvite, setSendInvite] = useState(true);
   const [location, setLocation] = useState('');
   const [accessCode, setAccessCode] = useState('');
   const [unlocked, setUnlocked] = useState(false);
@@ -98,7 +108,12 @@ export default function NewInvitePage() {
   const [dayChips] = useState(() => buildDayChips());
   const [pickDate, setPickDate] = useState('');
   const [pickTime, setPickTime] = useState('19:00');
+  const [pickEnd, setPickEnd] = useState('');
+  const [pickActivity, setPickActivity] = useState<string | null>(null);
+  /** once they set a start time by hand, activity chips stop overwriting it */
+  const [timeIsTheirs, setTimeIsTheirs] = useState(false);
   const [pickLabel, setPickLabel] = useState('');
+  const [pickError, setPickError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [vibe, setVibe] = useState('sweet');
@@ -109,7 +124,7 @@ export default function NewInvitePage() {
     setSuggesting(true);
     setError(null);
     const optionHints = options
-      .map((o) => o.label.trim())
+      .map((o) => o.label.trim() || getActivity(o.activity)?.name || '')
       .filter(Boolean)
       .join(', ');
     const idea = [aiIdea.trim() || message.trim(), optionHints && `planned activities: ${optionHints}`]
@@ -135,16 +150,46 @@ export default function NewInvitePage() {
   }
 
   const validOptions = options.filter((o) => o.iso);
+  const willEmail = sendInvite && isValidEmail(toEmail);
+
+  function chooseActivity(a: Activity) {
+    setPickError(null);
+    if (pickActivity === a.id) {
+      setPickActivity(null);
+      return;
+    }
+    setPickActivity(a.id);
+    // Their own start time wins; the activity only suggests how long it runs.
+    const start = timeIsTheirs ? pickTime : a.time;
+    if (!timeIsTheirs) setPickTime(a.time);
+    setPickEnd(addHoursToTime(start, a.durationHours));
+  }
 
   function addOption() {
     if (!pickDate || !pickTime || options.length >= 5) return;
     const iso = `${pickDate}T${pickTime}`;
-    setOptions((prev) =>
-      prev.some((o) => o.iso === iso)
-        ? prev
-        : [...prev, { label: pickLabel.trim(), iso }],
+    const endIso = endIsoFrom(iso, pickEnd);
+    const duplicate = options.some(
+      (o) => o.iso === iso && o.endIso === endIso && o.activity === pickActivity,
     );
+    if (duplicate) {
+      setPickError('That one is already on the list 💭');
+      return;
+    }
+    setOptions((prev) => [
+      ...prev,
+      {
+        id: nanoid(6),
+        label: pickLabel.trim(),
+        iso,
+        endIso,
+        activity: pickActivity,
+      },
+    ]);
+    setPickError(null);
     setPickLabel('');
+    setPickEnd('');
+    setPickActivity(null);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -162,11 +207,15 @@ export default function NewInvitePage() {
           message,
           theme,
           notifyEmail,
+          toEmail,
+          sendInvite: willEmail,
           location,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           dateOptions: validOptions.map((o) => ({
             label: o.label,
             iso: new Date(o.iso).toISOString(),
+            endIso: o.endIso,
+            activity: o.activity,
           })),
         }),
       });
@@ -176,7 +225,10 @@ export default function NewInvitePage() {
         setSubmitting(false);
         return;
       }
-      router.push(`/manage/${data.secret}?created=1`);
+      const query = new URLSearchParams({ created: '1' });
+      if (data.emailSent) query.set('sent', '1');
+      else if (willEmail) query.set('mail', 'failed');
+      router.push(`/manage/${data.secret}?${query.toString()}`);
     } catch {
       setError('Network error — please try again');
       setSubmitting(false);
@@ -341,7 +393,7 @@ export default function NewInvitePage() {
 
             <fieldset className="flex flex-col gap-2">
               <legend className="text-sm font-medium">Theme</legend>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 {Object.values(themes).map((t) => (
                   <button
                     key={t.id}
@@ -383,31 +435,35 @@ export default function NewInvitePage() {
 
               {options.length > 0 && (
                 <div className="flex flex-col gap-2">
-                  {options.map((o) => (
-                    <div
-                      key={o.iso}
-                      className="flex items-center gap-2 rounded-2xl border border-rose-200 bg-white/80 px-4 py-2.5 text-sm"
-                    >
-                      <span className="font-medium">
-                        💖 {formatDateOption(o.iso)}
-                      </span>
-                      {o.label && (
-                        <span className="text-rose-900/60">· {o.label}</span>
-                      )}
-                      <button
-                        type="button"
-                        aria-label="Remove option"
-                        onClick={() =>
-                          setOptions((prev) =>
-                            prev.filter((p) => p.iso !== o.iso),
-                          )
-                        }
-                        className="ml-auto rounded-full px-2 py-0.5 text-rose-400 transition hover:bg-rose-100 hover:text-rose-600"
+                  {options.map((o) => {
+                    const activity = getActivity(o.activity);
+                    return (
+                      <div
+                        key={o.id}
+                        className="flex items-center gap-2 rounded-2xl border border-rose-200 bg-white/80 px-4 py-2.5 text-sm"
                       >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
+                        <span className="font-medium">
+                          {activity?.emoji ?? '💖'}{' '}
+                          {formatDateRange(o.iso, o.endIso)}
+                        </span>
+                        {(o.label || activity) && (
+                          <span className="text-rose-900/60">
+                            · {o.label || activity?.name}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          aria-label="Remove option"
+                          onClick={() =>
+                            setOptions((prev) => prev.filter((p) => p.id !== o.id))
+                          }
+                          className="ml-auto rounded-full px-2 py-0.5 text-rose-400 transition hover:bg-rose-100 hover:text-rose-600"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -418,7 +474,10 @@ export default function NewInvitePage() {
                       <button
                         key={c.date}
                         type="button"
-                        onClick={() => setPickDate(c.date)}
+                        onClick={() => {
+                          setPickDate(c.date);
+                          setPickError(null);
+                        }}
                         className={`flex shrink-0 flex-col items-center rounded-2xl border px-3.5 py-2 text-xs transition ${
                           pickDate === c.date
                             ? 'border-rose-500 bg-rose-500 text-white'
@@ -439,34 +498,79 @@ export default function NewInvitePage() {
                       />
                     </label>
                   </div>
+
                   <div className="flex flex-wrap items-center gap-2">
-                    {TIME_PRESETS.map((p) => (
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-rose-900/50">
+                      What&apos;s the plan?
+                    </span>
+                    {activities.map((a) => (
                       <button
-                        key={p.name}
+                        key={a.id}
                         type="button"
-                        onClick={() => setPickTime(p.time)}
+                        onClick={() => chooseActivity(a)}
                         className={`rounded-full border px-3 py-1.5 text-xs transition ${
-                          pickTime === p.time
+                          pickActivity === a.id
                             ? 'border-rose-500 bg-rose-500 text-white'
                             : 'border-rose-200 bg-white/80 text-rose-900 hover:border-rose-400'
                         }`}
                       >
-                        {p.emoji} {p.name}
+                        {a.emoji} {a.name}
                       </button>
                     ))}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-rose-900/70">
+                    <span className="font-medium">Starts</span>
                     <input
                       type="time"
+                      aria-label="Start time"
                       value={pickTime}
-                      onChange={(e) => setPickTime(e.target.value)}
+                      onChange={(e) => {
+                        setPickTime(e.target.value);
+                        setTimeIsTheirs(true);
+                        setPickError(null);
+                      }}
                       className="rounded-full border border-rose-200 bg-white/80 px-3 py-1 text-xs text-rose-900 outline-none transition focus:border-rose-400"
                     />
+                    <span className="font-medium">Ends</span>
+                    <input
+                      type="time"
+                      aria-label="End time (optional)"
+                      value={pickEnd}
+                      onChange={(e) => setPickEnd(e.target.value)}
+                      className="rounded-full border border-rose-200 bg-white/80 px-3 py-1 text-xs text-rose-900 outline-none transition focus:border-rose-400"
+                    />
+                    {DURATION_CHIPS.map((hours) => (
+                      <button
+                        key={hours}
+                        type="button"
+                        onClick={() => setPickEnd(addHoursToTime(pickTime, hours))}
+                        className="rounded-full border border-rose-200 bg-white/80 px-2.5 py-1 text-[11px] transition hover:border-rose-400"
+                      >
+                        +{hours}h
+                      </button>
+                    ))}
+                    {pickEnd ? (
+                      <button
+                        type="button"
+                        onClick={() => setPickEnd('')}
+                        className="rounded-full px-2 py-1 text-[11px] text-rose-400 transition hover:text-rose-600"
+                      >
+                        clear end ✕
+                      </button>
+                    ) : (
+                      <span className="text-[11px] text-rose-900/40">
+                        (end time optional)
+                      </span>
+                    )}
                   </div>
+
                   <div className="flex items-center gap-2">
                     <input
                       className={`${inputClass} flex-1 !py-2 text-sm`}
                       value={pickLabel}
                       onChange={(e) => setPickLabel(e.target.value)}
-                      placeholder="what's the plan? e.g. dinner, picnic… (optional)"
+                      placeholder="add a detail? e.g. the new Dune, MoMA… (optional)"
                       maxLength={120}
                     />
                     <button
@@ -478,14 +582,50 @@ export default function NewInvitePage() {
                       + Add
                     </button>
                   </div>
-                  {!pickDate && (
+                  {pickError && (
+                    <p className="text-[11px] font-medium text-rose-600">
+                      {pickError}
+                    </p>
+                  )}
+                  {!pickDate && !pickError && (
                     <p className="text-[11px] text-rose-900/50">
-                      Tap a day and a time, then hit Add. You can add up to 5.
+                      Tap a day, pick a plan or a time, then hit Add. You can add
+                      up to 5.
                     </p>
                   )}
                 </div>
               )}
             </fieldset>
+
+            <label className="flex flex-col gap-1.5 text-sm font-medium">
+              Their email{' '}
+              <span className="font-normal text-rose-900/60">
+                (optional — we can deliver the invite for you)
+              </span>
+              <input
+                type="email"
+                className={inputClass}
+                value={toEmail}
+                onChange={(e) => setToEmail(e.target.value)}
+                placeholder="them@example.com"
+                maxLength={254}
+              />
+            </label>
+
+            {toEmail.trim() !== '' && (
+              <label className="-mt-2 flex items-start gap-2 text-sm text-rose-900/80">
+                <input
+                  type="checkbox"
+                  checked={sendInvite}
+                  onChange={(e) => setSendInvite(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-rose-500"
+                />
+                Email them the invite as soon as I create it 💌{' '}
+                <span className="text-rose-900/50">
+                  (the message stays sealed until they open the link)
+                </span>
+              </label>
+            )}
 
             <label className="flex flex-col gap-1.5 text-sm font-medium">
               Email me when they answer{' '}
@@ -513,7 +653,11 @@ export default function NewInvitePage() {
               whileTap={{ scale: submitting ? 1 : 0.98 }}
               className="mt-2 rounded-full bg-rose-500 px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-rose-300/60 transition-colors hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {submitting ? 'Creating…' : 'Create my invite 💘'}
+              {submitting
+                ? 'Creating…'
+                : willEmail
+                  ? 'Create & send it 💘'
+                  : 'Create my invite 💘'}
             </motion.button>
           </form>
 

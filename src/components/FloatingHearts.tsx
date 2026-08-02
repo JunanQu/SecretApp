@@ -12,7 +12,7 @@ type Particle = {
   emoji: string;
 };
 
-const EMOJIS = ['💕', '✨', '💗', '🌸', '💫', '🤍'];
+const DEFAULT_EMOJIS = ['💕', '✨', '💗', '🌸', '💫', '🤍'];
 
 /** Deterministic PRNG so the server and client render identical particles. */
 function mulberry32(seed: number) {
@@ -25,7 +25,15 @@ function mulberry32(seed: number) {
   };
 }
 
-export default function FloatingHearts({ className = '' }: { className?: string }) {
+export default function FloatingHearts({
+  className = '',
+  emojis,
+}: {
+  className?: string;
+  /** themed particles — hearts and sparkles by default */
+  emojis?: string[];
+}) {
+  const pool = emojis?.length ? emojis : DEFAULT_EMOJIS;
   const particles = useMemo<Particle[]>(() => {
     const rand = mulberry32(20260731);
     return Array.from({ length: 14 }, (_, i) => ({
@@ -34,9 +42,9 @@ export default function FloatingHearts({ className = '' }: { className?: string 
       size: 14 + rand() * 18,
       delay: rand() * 8,
       duration: 9 + rand() * 8,
-      emoji: EMOJIS[Math.floor(rand() * EMOJIS.length)],
+      emoji: pool[Math.floor(rand() * pool.length)],
     }));
-  }, []);
+  }, [pool]);
 
   return (
     <div

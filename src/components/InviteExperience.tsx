@@ -3,56 +3,63 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import { getTheme } from '@/lib/themes';
-import { formatDateOption } from '@/lib/format';
+import { getTheme, type Theme } from '@/lib/themes';
+import { getActivity } from '@/lib/activities';
+import { formatDateRange } from '@/lib/format';
+import { endIsoFrom } from '@/lib/datetime';
 import type { InvitePublic } from '@/lib/types';
 import FloatingHearts from '@/components/FloatingHearts';
 import AddToCalendar from '@/components/AddToCalendar';
 import MapLinks from '@/components/MapLinks';
+import ThemeMascot from '@/components/ThemeMascot';
 
 type Stage = 'envelope' | 'card' | 'availability' | 'declined' | 'done';
 
-let cachedShapes: confetti.Shape[] | null = null;
-function emojiShapes(): confetti.Shape[] {
-  if (cachedShapes) return cachedShapes;
+/** A suggested time the invitee types in: local start + optional "HH:MM" end. */
+type ProposedDraft = { start: string; end: string };
+
+const shapeCache = new Map<string, confetti.Shape[]>();
+function emojiShapes(emojis: string[]): confetti.Shape[] {
+  const key = emojis.join('');
+  const cached = shapeCache.get(key);
+  if (cached) return cached;
+  let shapes: confetti.Shape[] = [];
   try {
-    cachedShapes = [
-      confetti.shapeFromText({ text: '💖', scalar: 2 }),
-      confetti.shapeFromText({ text: '💌', scalar: 2 }),
-    ];
+    shapes = emojis.map((text) => confetti.shapeFromText({ text, scalar: 2 }));
   } catch {
-    cachedShapes = [];
+    shapes = [];
   }
-  return cachedShapes;
+  shapeCache.set(key, shapes);
+  return shapes;
 }
 
-function heartPop() {
-  const shapes = emojiShapes();
+function heartPop(theme: Theme) {
+  const shapes = emojiShapes(theme.confettiEmojis);
   confetti({
     particleCount: shapes.length ? 20 : 35,
     spread: 80,
     startVelocity: 26,
     scalar: shapes.length ? 1.7 : 1,
     shapes: shapes.length ? shapes : undefined,
-    colors: ['#f43f5e', '#fb7185', '#fda4af'],
+    colors: theme.confettiColors,
     origin: { x: 0.5, y: 0.45 },
     disableForReducedMotion: true,
   });
 }
 
-function fireConfetti() {
+function fireConfetti(theme: Theme) {
   const burst = (opts: confetti.Options) =>
     confetti({
       particleCount: 90,
       spread: 75,
-      colors: ['#f43f5e', '#fb7185', '#fda4af', '#fecdd3', '#ffffff'],
+      colors: theme.confettiColors,
       disableForReducedMotion: true,
       ...opts,
     });
   burst({ origin: { x: 0.2, y: 0.7 }, angle: 60 });
   burst({ origin: { x: 0.8, y: 0.7 }, angle: 120 });
   setTimeout(() => burst({ origin: { x: 0.5, y: 0.6 }, spread: 100 }), 250);
-  const shapes = emojiShapes();
+  const shapes = emojiShapes(theme.confettiEmojis);
   if (shapes.length) {
     setTimeout(
       () =>
@@ -84,15 +91,19 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
   const [stage, setStage] = useState<Stage>('envelope');
   const [opening, setOpening] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
-  const [proposed, setProposed] = useState<string[]>([]);
+  const [proposed, setProposed] = useState<ProposedDraft[]>([]);
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const filledProposals = proposed.filter(
+    (p) => p.start && !isNaN(new Date(p.start).getTime()),
+  );
+
   function openEnvelope() {
     if (opening) return;
     setOpening(true);
-    setTimeout(heartPop, 500);
+    setTimeout(() => heartPop(t), 500);
     setTimeout(() => setStage('card'), 1100);
   }
 
@@ -107,7 +118,10 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
           accepted,
           selectedOptionIds: accepted ? selected : [],
           proposedTimes: accepted
-            ? proposed.filter(Boolean).map((t) => new Date(t).toISOString())
+            ? filledProposals.map((p) => ({
+                iso: new Date(p.start).toISOString(),
+                endIso: endIsoFrom(p.start, p.end),
+              }))
             : [],
           note,
         }),
@@ -132,7 +146,7 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
     <main
       className={`relative flex flex-1 items-center justify-center overflow-hidden px-4 py-12 ${t.bg}`}
     >
-      <FloatingHearts className={t.particle} />
+      <FloatingHearts className={t.particle} emojis={t.particles} />
       <motion.div
         aria-hidden
         animate={{ x: [0, 40, 0], y: [0, -30, 0] }}
@@ -184,7 +198,7 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
                     transition={{ delay: 0.4, duration: 0.65, ease: 'easeOut' }}
                     className="absolute inset-x-5 bottom-3 top-3 z-10 flex flex-col items-center justify-center rounded-xl bg-white shadow-md"
                   >
-                    <span className="text-4xl">{t.emoji}</span>
+                    <ThemeMascot themeId={invite.theme} size={44} />
                     <span className={`mt-1 text-xs font-medium tracking-wide opacity-60 ${t.text}`}>
                       for {invite.toName}
                     </span>
@@ -252,15 +266,9 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
               >
                 <motion.div
                   variants={revealItem}
-                  className="text-5xl"
+                  className="flex justify-center"
                 >
-                  <motion.span
-                    className="inline-block"
-                    animate={{ rotate: [0, -8, 8, 0] }}
-                    transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-                  >
-                    {t.emoji}
-                  </motion.span>
+                  <ThemeMascot themeId={invite.theme} size={72} />
                 </motion.div>
                 <motion.h1
                   variants={revealItem}
@@ -293,7 +301,7 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
                     whileHover={{ scale: 1.06 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => {
-                      fireConfetti();
+                      fireConfetti(t);
                       setStage('availability');
                     }}
                     className={`rounded-full px-12 py-4 text-xl font-semibold transition-colors ${t.button}`}
@@ -331,6 +339,7 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
               <div className="mt-5 flex flex-col gap-2.5">
                 {invite.dateOptions.map((o) => {
                   const isSelected = selected.includes(o.id);
+                  const activity = getActivity(o.activity);
                   return (
                     <motion.button
                       key={o.id}
@@ -342,13 +351,18 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
                             : [...prev, o.id],
                         )
                       }
-                      className={`rounded-full border px-5 py-3 text-sm font-medium transition ${
+                      className={`rounded-2xl border px-5 py-3 text-sm font-medium transition ${
                         isSelected ? t.chipSelected : t.chip
                       }`}
                     >
-                      {isSelected ? '💖 ' : ''}
-                      {formatDateOption(o.iso)}
-                      {o.label && <span className="opacity-70"> · {o.label}</span>}
+                      {activity ? `${activity.emoji} ` : isSelected ? '💖 ' : ''}
+                      {formatDateRange(o.iso, o.endIso)}
+                      {(o.label || activity) && (
+                        <span className="opacity-70">
+                          {' '}
+                          · {o.label || activity?.name}
+                        </span>
+                      )}
                     </motion.button>
                   );
                 })}
@@ -357,18 +371,20 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
                 <p className="text-sm font-medium">
                   None of these work? Suggest your own time 💡
                 </p>
-                <div className="mt-2 flex flex-col gap-2">
-                  {proposed.map((time, i) => (
-                    <div key={i} className="flex items-center gap-2">
+                <div className="mt-2 flex flex-col gap-3">
+                  {proposed.map((p, i) => (
+                    <div key={i} className="flex flex-wrap items-center gap-2">
                       <input
                         type="datetime-local"
-                        value={time}
+                        value={p.start}
                         onChange={(e) =>
                           setProposed((prev) =>
-                            prev.map((p, idx) => (idx === i ? e.target.value : p)),
+                            prev.map((prop, idx) =>
+                              idx === i ? { ...prop, start: e.target.value } : prop,
+                            ),
                           )
                         }
-                        className="flex-1 rounded-2xl border border-current/20 bg-white/80 px-4 py-2.5 text-sm outline-none"
+                        className="min-w-0 flex-1 rounded-2xl border border-current/20 bg-white/80 px-4 py-2.5 text-sm outline-none"
                       />
                       <button
                         aria-label="Remove suggested time"
@@ -379,11 +395,30 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
                       >
                         ✕
                       </button>
+                      <label className="flex w-full items-center gap-2 text-xs opacity-70">
+                        until
+                        <input
+                          type="time"
+                          aria-label="End time (optional)"
+                          value={p.end}
+                          onChange={(e) =>
+                            setProposed((prev) =>
+                              prev.map((prop, idx) =>
+                                idx === i ? { ...prop, end: e.target.value } : prop,
+                              ),
+                            )
+                          }
+                          className="rounded-full border border-current/20 bg-white/80 px-3 py-1 text-xs outline-none"
+                        />
+                        <span className="opacity-70">(optional)</span>
+                      </label>
                     </div>
                   ))}
                   {proposed.length < 3 && (
                     <button
-                      onClick={() => setProposed((prev) => [...prev, ''])}
+                      onClick={() =>
+                        setProposed((prev) => [...prev, { start: '', end: '' }])
+                      }
                       className="self-start rounded-full border border-dashed border-current/30 px-4 py-1.5 text-xs font-medium opacity-70 transition hover:opacity-100"
                     >
                       + suggest a time
@@ -404,7 +439,7 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
                 whileTap={{ scale: submitting ? 1 : 0.96 }}
                 disabled={
                   submitting ||
-                  (selected.length === 0 && proposed.filter(Boolean).length === 0)
+                  (selected.length === 0 && filledProposals.length === 0)
                 }
                 onClick={() => submit(true)}
                 className={`mt-5 w-full rounded-full px-8 py-4 text-lg font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${t.button}`}
@@ -435,7 +470,7 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
               <p className="mt-3 opacity-80">
                 Your answer is on its way to {invite.fromName}. Get excited! ✨
               </p>
-              {(selected.length > 0 || proposed.filter(Boolean).length > 0) && (
+              {(selected.length > 0 || filledProposals.length > 0) && (
                 <div className="mt-6 text-left">
                   <p className="text-center text-sm font-medium opacity-60">
                     Save a time to your calendar
@@ -448,38 +483,41 @@ export default function InviteExperience({ invite }: { invite: InvitePublic }) {
                           key={o.id}
                           className={`rounded-2xl border px-4 py-3 text-sm font-medium ${t.chipSelected}`}
                         >
-                          💖 {formatDateOption(o.iso)}
+                          {getActivity(o.activity)?.emoji ?? '💖'}{' '}
+                          {formatDateRange(o.iso, o.endIso)}
                           {o.label && (
                             <span className="opacity-80"> · {o.label}</span>
                           )}
                           <AddToCalendar
                             withName={invite.fromName}
                             startIso={o.iso}
+                            endIso={o.endIso}
                             message={invite.message}
                             label={o.label || undefined}
                             location={invite.location || undefined}
+                            activity={o.activity}
                           />
                         </div>
                       ))}
-                    {proposed
-                      .filter(Boolean)
-                      .map((time) => {
-                        const iso = new Date(time).toISOString();
-                        return (
-                          <div
-                            key={iso}
-                            className={`rounded-2xl border px-4 py-3 text-sm font-medium ${t.chip}`}
-                          >
-                            💡 {formatDateOption(iso)}
-                            <AddToCalendar
-                              withName={invite.fromName}
-                              startIso={iso}
-                              message={invite.message}
-                              location={invite.location || undefined}
-                            />
-                          </div>
-                        );
-                      })}
+                    {filledProposals.map((p) => {
+                      const iso = new Date(p.start).toISOString();
+                      const endIso = endIsoFrom(p.start, p.end);
+                      return (
+                        <div
+                          key={iso}
+                          className={`rounded-2xl border px-4 py-3 text-sm font-medium ${t.chip}`}
+                        >
+                          💡 {formatDateRange(iso, endIso)}
+                          <AddToCalendar
+                            withName={invite.fromName}
+                            startIso={iso}
+                            endIso={endIso}
+                            message={invite.message}
+                            location={invite.location || undefined}
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

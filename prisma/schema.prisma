@@ -8,19 +8,22 @@ datasource db {
 }
 
 model Invite {
-  id          String     @id @default(cuid())
-  slug        String     @unique
-  secret      String     @unique
-  fromName    String
-  toName      String
-  message     String
-  theme       String     @default("blush")
-  notifyEmail String?
-  location    String?
-  timezone    String?
-  dateOptions Json
-  createdAt   DateTime   @default(now())
-  responses   Response[]
+  id           String     @id @default(cuid())
+  slug         String     @unique
+  secret       String     @unique
+  fromName     String
+  toName       String
+  message      String
+  theme        String     @default("blush")
+  notifyEmail  String?
+  /// where the invite link was emailed, and when it last went out
+  toEmail      String?
+  inviteSentAt DateTime?
+  location     String?
+  timezone     String?
+  dateOptions  Json
+  createdAt    DateTime   @default(now())
+  responses    Response[]
 }
 
 model Response {

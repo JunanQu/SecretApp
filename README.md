@@ -7,10 +7,19 @@ No accounts, no sign-up friction — just butterflies.
 ## How it works
 
 1. **Create an invite** at `/new` — your names, a sweet message, 1–5 proposed
-   date/time options, and a theme (Blush Pink, Lavender Dream, or Golden Sunset).
-2. **Share the link** (`/i/<slug>`) — they open an animated envelope, tap
-   **Yes** (confetti included), and pick the times that work.
-3. **See their answer** on your private manage page (`/manage/<secret>`).
+   date/time options (each with an optional end time and an activity such as
+   🎬 movie, 🎤 concert or 🏛️ museum), and a theme.
+2. **Share the link** (`/i/<slug>`) — copy it, or let the app email the invite
+   for you. They open an animated envelope, tap **Yes** (confetti included),
+   and pick the times that work — or suggest their own.
+3. **See their answer** on your private manage page (`/manage/<secret>`), where
+   you can also (re)send the invite by email.
+
+### Themes
+
+Blush Pink 🌸, Lavender Dream 💜, Golden Sunset 🌅, Shepherd Pup 🐕 and Ragdoll
+Kitty 🐱. The pet themes come with an illustrated german shepherd / ragdoll cat
+that blinks at you, plus paw-print particles and matching confetti.
 
 Access control is via unguessable URL tokens — the public `slug` for the
 invitee and the private `secret` for the creator.

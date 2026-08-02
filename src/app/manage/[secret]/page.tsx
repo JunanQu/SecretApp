@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 import { prisma } from '@/lib/db';
+import { normalizeProposedTimes } from '@/lib/proposed';
+import { originFromHeaders } from '@/lib/url';
 import type { DateOption } from '@/lib/types';
 import ManageView from '@/components/ManageView';
 
@@ -19,9 +21,7 @@ export default async function ManagePage({
   params: Promise<{ secret: string }>;
 }) {
   const { secret } = await params;
-  const headerList = await headers();
-  const host = headerList.get('x-forwarded-host') ?? headerList.get('host') ?? 'localhost:3000';
-  const proto = headerList.get('x-forwarded-proto') ?? 'http';
+  const origin = originFromHeaders(await headers());
   const invite = await prisma.invite.findUnique({
     where: { secret },
     include: { responses: { orderBy: { createdAt: 'desc' } } },
@@ -31,7 +31,10 @@ export default async function ManagePage({
   return (
     <Suspense>
       <ManageView
-      inviteUrl={`${proto}://${host}/i/${invite.slug}`}
+      inviteUrl={`${origin}/i/${invite.slug}`}
+      secret={invite.secret}
+      toEmail={invite.toEmail}
+      inviteSentAt={invite.inviteSentAt?.toISOString() ?? null}
       invite={{
         slug: invite.slug,
         fromName: invite.fromName,
@@ -45,7 +48,7 @@ export default async function ManagePage({
         id: r.id,
         accepted: r.accepted,
         selectedOptionIds: r.selectedOptionIds as string[],
-        proposedTimes: (r.proposedTimes as string[]) ?? [],
+        proposedTimes: normalizeProposedTimes(r.proposedTimes),
         note: r.note,
         createdAt: r.createdAt.toISOString(),
       }))}

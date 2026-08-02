@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import FloatingHearts from '@/components/FloatingHearts';
 import DemoWalkthrough from '@/components/DemoWalkthrough';
+import { themes } from '@/lib/themes';
 
 const steps = [
   {
@@ -64,6 +65,27 @@ export default function Home() {
             what she&apos;ll see
           </p>
           <DemoWalkthrough />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="w-full"
+        >
+          <p className="mb-4 text-sm font-medium uppercase tracking-widest text-rose-400">
+            dress it up
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {Object.values(themes).map((t) => (
+              <span
+                key={t.id}
+                className="rounded-full border border-rose-200 bg-white/70 px-4 py-2 text-sm backdrop-blur-md"
+              >
+                {t.emoji} {t.name}
+              </span>
+            ))}
+          </div>
         </motion.div>
 
         <div className="grid w-full gap-4 sm:grid-cols-3">

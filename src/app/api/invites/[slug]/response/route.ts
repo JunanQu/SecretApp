@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { sendAnswerEmail } from '@/lib/email';
+import { originFromHeaders } from '@/lib/url';
+import type { ProposedTime } from '@/lib/proposed';
 import type { DateOption } from '@/lib/types';
 
 type ResponseBody = {
@@ -9,6 +11,36 @@ type ResponseBody = {
   proposedTimes?: unknown;
   note?: unknown;
 };
+
+const MAX_PROPOSED_LENGTH_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * A suggested time is either a plain ISO string (the original shape, still
+ * accepted) or `{ iso, endIso }` now that invitees can give an end time.
+ */
+function parseProposedTime(entry: unknown): ProposedTime | null {
+  const raw =
+    typeof entry === 'string'
+      ? { iso: entry, endIso: null }
+      : typeof entry === 'object' && entry !== null
+        ? (entry as { iso?: unknown; endIso?: unknown })
+        : null;
+  if (!raw || typeof raw.iso !== 'string') return null;
+
+  const start = new Date(raw.iso);
+  if (isNaN(start.getTime())) return null;
+
+  let endIso: string | null = null;
+  if (raw.endIso !== undefined && raw.endIso !== null && raw.endIso !== '') {
+    if (typeof raw.endIso !== 'string') return null;
+    const end = new Date(raw.endIso);
+    if (isNaN(end.getTime()) || end <= start) return null;
+    if (end.getTime() - start.getTime() > MAX_PROPOSED_LENGTH_MS) return null;
+    endIso = end.toISOString();
+  }
+
+  return { iso: start.toISOString(), endIso };
+}
 
 export async function POST(
   req: Request,
@@ -51,24 +83,27 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid note' }, { status: 400 });
   }
 
-  const normalizedProposedTimes: string[] = [];
+  const normalizedProposedTimes: ProposedTime[] = [];
   if (proposedTimes !== undefined && proposedTimes !== null) {
-    if (
-      !Array.isArray(proposedTimes) ||
-      proposedTimes.length > 3 ||
-      !proposedTimes.every(
-        (t: unknown): t is string =>
-          typeof t === 'string' && !isNaN(new Date(t).getTime()),
-      )
-    ) {
+    if (!Array.isArray(proposedTimes) || proposedTimes.length > 3) {
       return NextResponse.json(
-        { error: 'proposedTimes must be up to 3 valid datetime strings' },
+        { error: 'proposedTimes must be up to 3 valid datetime entries' },
         { status: 400 },
       );
     }
-    normalizedProposedTimes.push(
-      ...proposedTimes.map((t) => new Date(t).toISOString()),
-    );
+    for (const entry of proposedTimes) {
+      const parsed = parseProposedTime(entry);
+      if (!parsed) {
+        return NextResponse.json(
+          {
+            error:
+              'Each suggested time needs a valid start, and any end must be after it (max 24 hours)',
+          },
+          { status: 400 },
+        );
+      }
+      normalizedProposedTimes.push(parsed);
+    }
   }
 
   const cleanNote = typeof note === 'string' && note.trim() ? note.trim() : null;
@@ -84,13 +119,13 @@ export async function POST(
   });
 
   if (invite.notifyEmail) {
-    const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'localhost:3000';
-    const proto = req.headers.get('x-forwarded-proto') ?? 'http';
+    const origin = originFromHeaders(req.headers);
     const inviteOptions = invite.dateOptions as DateOption[];
     await sendAnswerEmail({
       to: invite.notifyEmail,
       fromName: invite.fromName,
       toName: invite.toName,
+      theme: invite.theme,
       accepted,
       selectedOptions: inviteOptions.filter((o) =>
         (selectedOptionIds as string[]).includes(o.id),
@@ -99,7 +134,7 @@ export async function POST(
       note: cleanNote,
       location: invite.location,
       timezone: invite.timezone,
-      manageUrl: `${proto}://${host}/manage/${invite.secret}`,
+      manageUrl: `${origin}/manage/${invite.secret}`,
     });
   }
 
