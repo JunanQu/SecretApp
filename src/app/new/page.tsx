@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { nanoid } from 'nanoid';
 import { themes } from '@/lib/themes';
 import { activities, getActivity, type Activity } from '@/lib/activities';
 import { formatDateRange } from '@/lib/format';
@@ -12,6 +13,8 @@ import { isValidEmail } from '@/lib/validation';
 import InviteCardPreview from '@/components/InviteCardPreview';
 
 type DraftOption = {
+  /** client-side key — two options may share a start time */
+  id: string;
   label: string;
   /** local datetime string, e.g. "2026-08-05T19:00" */
   iso: string;
@@ -107,7 +110,10 @@ export default function NewInvitePage() {
   const [pickTime, setPickTime] = useState('19:00');
   const [pickEnd, setPickEnd] = useState('');
   const [pickActivity, setPickActivity] = useState<string | null>(null);
+  /** once they set a start time by hand, activity chips stop overwriting it */
+  const [timeIsTheirs, setTimeIsTheirs] = useState(false);
   const [pickLabel, setPickLabel] = useState('');
+  const [pickError, setPickError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [vibe, setVibe] = useState('sweet');
@@ -147,31 +153,40 @@ export default function NewInvitePage() {
   const willEmail = sendInvite && isValidEmail(toEmail);
 
   function chooseActivity(a: Activity) {
+    setPickError(null);
     if (pickActivity === a.id) {
       setPickActivity(null);
       return;
     }
     setPickActivity(a.id);
-    setPickTime(a.time);
-    setPickEnd(addHoursToTime(a.time, a.durationHours));
+    // Their own start time wins; the activity only suggests how long it runs.
+    const start = timeIsTheirs ? pickTime : a.time;
+    if (!timeIsTheirs) setPickTime(a.time);
+    setPickEnd(addHoursToTime(start, a.durationHours));
   }
 
   function addOption() {
     if (!pickDate || !pickTime || options.length >= 5) return;
     const iso = `${pickDate}T${pickTime}`;
-    setOptions((prev) =>
-      prev.some((o) => o.iso === iso)
-        ? prev
-        : [
-            ...prev,
-            {
-              label: pickLabel.trim(),
-              iso,
-              endIso: endIsoFrom(iso, pickEnd),
-              activity: pickActivity,
-            },
-          ],
+    const endIso = endIsoFrom(iso, pickEnd);
+    const duplicate = options.some(
+      (o) => o.iso === iso && o.endIso === endIso && o.activity === pickActivity,
     );
+    if (duplicate) {
+      setPickError('That one is already on the list 💭');
+      return;
+    }
+    setOptions((prev) => [
+      ...prev,
+      {
+        id: nanoid(6),
+        label: pickLabel.trim(),
+        iso,
+        endIso,
+        activity: pickActivity,
+      },
+    ]);
+    setPickError(null);
     setPickLabel('');
     setPickEnd('');
     setPickActivity(null);
@@ -424,7 +439,7 @@ export default function NewInvitePage() {
                     const activity = getActivity(o.activity);
                     return (
                       <div
-                        key={o.iso}
+                        key={o.id}
                         className="flex items-center gap-2 rounded-2xl border border-rose-200 bg-white/80 px-4 py-2.5 text-sm"
                       >
                         <span className="font-medium">
@@ -440,9 +455,7 @@ export default function NewInvitePage() {
                           type="button"
                           aria-label="Remove option"
                           onClick={() =>
-                            setOptions((prev) =>
-                              prev.filter((p) => p.iso !== o.iso),
-                            )
+                            setOptions((prev) => prev.filter((p) => p.id !== o.id))
                           }
                           className="ml-auto rounded-full px-2 py-0.5 text-rose-400 transition hover:bg-rose-100 hover:text-rose-600"
                         >
@@ -461,7 +474,10 @@ export default function NewInvitePage() {
                       <button
                         key={c.date}
                         type="button"
-                        onClick={() => setPickDate(c.date)}
+                        onClick={() => {
+                          setPickDate(c.date);
+                          setPickError(null);
+                        }}
                         className={`flex shrink-0 flex-col items-center rounded-2xl border px-3.5 py-2 text-xs transition ${
                           pickDate === c.date
                             ? 'border-rose-500 bg-rose-500 text-white'
@@ -509,7 +525,11 @@ export default function NewInvitePage() {
                       type="time"
                       aria-label="Start time"
                       value={pickTime}
-                      onChange={(e) => setPickTime(e.target.value)}
+                      onChange={(e) => {
+                        setPickTime(e.target.value);
+                        setTimeIsTheirs(true);
+                        setPickError(null);
+                      }}
                       className="rounded-full border border-rose-200 bg-white/80 px-3 py-1 text-xs text-rose-900 outline-none transition focus:border-rose-400"
                     />
                     <span className="font-medium">Ends</span>
@@ -562,7 +582,12 @@ export default function NewInvitePage() {
                       + Add
                     </button>
                   </div>
-                  {!pickDate && (
+                  {pickError && (
+                    <p className="text-[11px] font-medium text-rose-600">
+                      {pickError}
+                    </p>
+                  )}
+                  {!pickDate && !pickError && (
                     <p className="text-[11px] text-rose-900/50">
                       Tap a day, pick a plan or a time, then hit Add. You can add
                       up to 5.

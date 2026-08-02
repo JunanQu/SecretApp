@@ -9,14 +9,28 @@ import type { DateOption } from '@/lib/types';
  * Emails the invite link to the invitee. Guarded by the creator's private
  * `secret`, plus a small per-invite rate limit so a leaked manage link can't
  * be turned into a mailer.
+ *
+ * The counter lives in process memory, so it is advisory: each serverless
+ * instance keeps its own tally and a cold start resets it. The unguessable
+ * secret is the real gate — this just stops one client from hammering send.
  */
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_SENDS_PER_WINDOW = 5;
+const PRUNE_ABOVE = 200;
 const sendLog = new Map<string, number[]>();
+
+/** Drop expired timestamps so the map can't grow without bound. */
+function prune(now: number): void {
+  for (const [key, hits] of sendLog) {
+    const recent = hits.filter((at) => now - at < WINDOW_MS);
+    if (recent.length) sendLog.set(key, recent);
+    else sendLog.delete(key);
+  }
+}
 
 function rateLimited(secret: string): boolean {
   const now = Date.now();
-  if (sendLog.size > 500) sendLog.clear();
+  if (sendLog.size > PRUNE_ABOVE) prune(now);
   const recent = (sendLog.get(secret) ?? []).filter((at) => now - at < WINDOW_MS);
   if (recent.length >= MAX_SENDS_PER_WINDOW) {
     sendLog.set(secret, recent);
@@ -24,6 +38,15 @@ function rateLimited(secret: string): boolean {
   }
   sendLog.set(secret, [...recent, now]);
   return false;
+}
+
+/** Give the slot back when the send never actually went out. */
+function refundSend(secret: string): void {
+  const hits = sendLog.get(secret);
+  if (!hits?.length) return;
+  hits.pop();
+  if (hits.length) sendLog.set(secret, hits);
+  else sendLog.delete(secret);
 }
 
 export async function POST(
@@ -64,6 +87,8 @@ export async function POST(
   });
 
   if (!result.ok) {
+    // Nothing was delivered, so don't spend one of their five attempts on it.
+    refundSend(secret);
     return NextResponse.json({ error: result.error }, { status: 502 });
   }
 
